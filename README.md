@@ -25,7 +25,7 @@ First cell:
 
 ```python
 # @skip
-!pip install -q git+https://github.com/<GITHUB_USER>/trail.git
+!pip install -q git+https://github.com/kavin-upreti/trail.git
 import trail
 trail.start("makemore-3")
 ```

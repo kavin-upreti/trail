@@ -18,13 +18,14 @@ Last updated: 2026-09-11 by Claude Code
 2. M2 — Colab spike (needs the user to run `examples/colab_spike.ipynb`).
 
 ## Open questions
-- [BLOCKING for M0 remote] GitHub username for the repo URL — the README and the Colab
-  install line still say `<GITHUB_USER>`, and no git remote is set. Everything else in
-  M0 is finished; this only blocks pushing.
+- [BLOCKS M2] The repo `github.com/kavin-upreti/trail` does not exist yet, and the `gh`
+  CLI on this Mac is authenticated as a *different* account (`KavinUpreti`). Before the
+  Colab spike can install Trail, the user needs to create the empty **public** repo under
+  `kavin-upreti` and run `gh auth login` as that account. The remote is already set.
 
 ## Decisions pending my input
-- Confirm repo visibility (default: public, so Colab can `pip install git+https://…`
-  without credentials — the repo holds only Trail's code, never notebooks or logs).
+- Repo visibility: public (so Colab can `pip install git+https://…` without credentials —
+  the repo holds only Trail's code, never notebooks or logs). Owner: `kavin-upreti`.
 - Note: this repo lives in a path containing a space
   (`~/Desktop/Claude projs/gitlog sim`). That is deliberate cover for hard rule 8;
   say if you'd rather it moved to `~/code/trail`.

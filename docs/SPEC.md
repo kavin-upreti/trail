@@ -817,14 +817,14 @@ trail init                         # finds your Google Drive folder, writes conf
 trail doctor                       # everything should be ✓
 ```
 Then in Finder: right-click `My Drive/trail` → **Available offline**.
-The GitHub repo (`https://github.com/<GITHUB_USER>/trail`) should be **public** so Colab can install it
+The GitHub repo (`https://github.com/kavin-upreti/trail`) should be **public** so Colab can install it
 without credentials (it contains only Trail's code, never your notebooks or logs).
 
 ### 15.2 Colab (lectures)
 First cell of every notebook (use `examples/colab_template.ipynb` → *File → Save a copy*):
 ```python
 # @skip
-!pip install -q git+https://github.com/<GITHUB_USER>/trail.git
+!pip install -q git+https://github.com/kavin-upreti/trail.git
 import trail
 trail.start("makemore-3")
 ```
