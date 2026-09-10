@@ -276,7 +276,7 @@ def test_tensor_shapes_are_recorded_without_their_contents(kernel: Kernel, logs_
 
 def test_skip_tag_stores_a_minimal_record(kernel: Kernel, logs_root: Path):
     kernel.run(SETUP.format(project="skipping"))
-    kernel.run("# @skip\nprint('noisy install output ' * 100)")
+    kernel.run("# trail: skip\nprint('noisy install output ' * 100)")
     kernel.run("trail.stop()")
 
     runs = wait_for_runs(logs_root, "skipping", 1)
@@ -296,6 +296,21 @@ def test_secrets_never_reach_the_log(kernel: Kernel, logs_root: Path):
     on_disk = "".join(p.read_text(encoding="utf-8") for p in blob)
     assert token not in on_disk
     assert "[REDACTED]" in runs[0]["code"]
+
+
+def test_both_tag_spellings_work_in_a_real_kernel(kernel: Kernel, logs_root: Path):
+    # ADR 0003: "# trail:" is documented, "# @" stays a working alias.
+    kernel.run(SETUP.format(project="spellings"))
+    kernel.run("# trail: cell mlp\n# trail: cp lowered the learning rate\na = 1")
+    kernel.run("# @cell: mlp\n# @cp older spelling\na = 2")
+    kernel.run("trail.stop()")
+
+    runs = wait_for_runs(logs_root, "spellings", 2)
+    from trail.common import tags as tagmod
+
+    first, second = (tagmod.parse(r["code"]) for r in runs)
+    assert first.cell == "mlp" and first.checkpoint_note == "lowered the learning rate"
+    assert second.cell == "mlp" and second.checkpoint_note == "older spelling"
 
 
 def test_checkpoint_and_metric_calls_land_on_the_run(kernel: Kernel, logs_root: Path):

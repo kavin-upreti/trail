@@ -421,7 +421,7 @@ class Session:
         print(f"project     : {self.project}")
         print(f"session     : {self.session_id}")
         print(f"logs path   : {self.paths.dir if self.paths else '(none)'}")
-        print(f"runs        : {self.run_count}")
+        print(f"runs        : {self.run_count} (skipped cells are logged but not counted)")
 
         if self.paths is not None and self.session_id is not None:
             _report_from_log(self.paths.session_file(self.session_id))

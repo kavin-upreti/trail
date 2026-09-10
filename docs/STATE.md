@@ -19,20 +19,34 @@ Last updated: 2026-09-11 by Claude Code
   - Measured main-thread hook overhead: **p50 0.027 ms, p95 0.030 ms** (budget 5 ms).
   - `examples/demo_evolution.ipynb` produces sensible JSONL end to end.
 
+- **M2 — Colab spike. Done, run by the user on real Colab.** See ADR 0004.
+  - Capture works in Colab: frontend detected, Drive mounted, inline plot stored as a
+    PNG blob, tqdm stderr captured, no fallback, no writer errors.
+  - Overhead on Colab hardware: submit p50 0.024 ms / p95 0.034 ms (budget 5 ms).
+  - **Colab sends no cell ids (0/5.)** Verified it is the *frontend*, not the library
+    versions: IPython 7.34.0 defines `ExecutionInfo.cell_id` and ipykernel 6.17.1
+    forwards `metadata.cellId`. Colab just never sends it.
+  - Colab runs Python 3.13.15 / IPython 7.34.0, so 7.x support is required.
+  - Tag syntax collided with Colab's form annotations; fixed per ADR 0003.
+
 ## In progress
-- Nothing. M1 is closed and committed.
+- Nothing. M0–M2 are closed and committed.
 
 ## Next
-1. **M2 — Colab spike. Needs the user.** Build `examples/colab_spike.ipynb` per
-   SPEC 20.2, have the user run it in Colab and paste back `trail.report()`. The open
-   question it answers: **does Colab send `metadata.cellId`?** If it doesn't, untagged
-   cells fall back to fuzzy matching and `# @cell:` tags become essential.
-2. M3 — Engine (SPEC 10) + `trail log`, `trail rebuild`, `trail cells`.
+1. **M3 — Engine** (SPEC 10) + `trail log`, `trail rebuild`, `trail cells`.
+   ADR 0004 raises its priority: with no cell ids on Colab, **fuzzy identity matching
+   is the primary mechanism for untagged cells, not a fallback.** It needs testing
+   against realistic incremental edits, not just synthetic ones.
+2. M4 — CLI basics (`init`, `doctor`, `projects`, `template`, `version`, `show`).
 
 ## Decisions and findings
 - ADR 0001 — raw append-only logs.
 - ADR 0002 — `cell_id` arrives via execute_request `metadata.cellId`; verified against
   installed IPython 9.17.1 / ipykernel 7.3.0 source. Nothing in the kernel invents one.
+- ADR 0003 — tag syntax is `# trail: name value`; `# @name` kept as a silent alias,
+  because Colab reserves `# @word` for its own form annotations.
+- ADR 0004 — what the Colab spike measured, including a first guess I checked and
+  found wrong (Colab's IPython is not too old; its frontend simply omits `cellId`).
 - **Deviation from SPEC 8.6:** redaction is also applied to string values in the
   variable fingerprint. The spec's list of redacted fields missed `vars`, and a real
   kernel test caught `api_key = "sk-ant-..."` reaching disk.
@@ -41,6 +55,7 @@ Last updated: 2026-09-11 by Claude Code
   tqdm bar (which ends in `\r`, not `\n`) entirely.
 
 ## Open questions
-- Does Colab populate `cell_id`? (M2 answers this.)
-- If it doesn't: should Trail print a one-time reminder when an untagged cell is
-  edited? SPEC 21 default is yes, once per session.
+- Answered: Colab does not populate `cell_id`.
+- Should Trail print a one-time reminder when an untagged cell is edited on Colab?
+  ADR 0004 resolves SPEC 21's default to **yes** — there is no automatic recovery
+  there — but it isn't built yet. Belongs with M3, once the engine can tell.

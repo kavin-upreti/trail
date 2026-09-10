@@ -37,18 +37,30 @@ trail.start("makemore-3")
 Code along normally. Tag the moments that matter:
 
 ```python
-# @cell: mlp-init
-# @cp initial loss is 27, should be ~3.3
+# trail: cell mlp-init
+# trail: cp initial loss is 27, should be ~3.3
 W2 = torch.randn((n_hidden, vocab_size), generator=g) * 0.01
 ```
 
-| Tag | Meaning |
-|---|---|
-| `# @cell: name` | Names this cell so Trail tracks it across edits and sessions. |
-| `# @cp note` | Checkpoint. Only checkpoints get explained, and the note is sent to Claude. |
-| `# @fix` | This run replaces the previous version (a typo fix that still ran). |
-| `# @keep` | Force a real version even for a tiny change like `0.1 → 0.01`. |
-| `# @skip` | Don't record this cell (installs, downloads). |
+| Tag | Type it | Meaning |
+|---|---|---|
+| `# trail: cell name` | **Once per cell, ever** | Names this cell so Trail tracks it across edits and sessions. |
+| `# trail: cp note` | A few times a lecture | Checkpoint. Only checkpoints get explained, and the note is sent to Claude. |
+| `# trail: skip` | Once, on the install cell | Don't record this cell. |
+| `# trail: keep` | Rarely | Force a real version even for a tiny change like `0.1 → 0.01`. |
+| `# trail: fix` | Almost never | This run replaces the previous version — for code that *ran fine* but was wrong. |
+
+**You don't need any tags to record.** Trail captures every cell either way; tags just
+make the history read better. A failed run followed by a fix is folded together
+automatically — `fix` is only for the case where the broken version ran without error.
+
+The older `# @cell:` spelling still works, but Colab reserves `# @word` for its own
+form annotations and will warn about it, so prefer `# trail:` (ADR 0003).
+
+> **On Colab, name your cells.** Colab doesn't send cell ids (ADR 0004), so a
+> `# trail: cell name` tag is the only way Trail can be certain that an edited cell is
+> the same cell. Without one it falls back to matching on code similarity, which is
+> usually right but not guaranteed.
 
 Last cell: `trail.stop()`.
 

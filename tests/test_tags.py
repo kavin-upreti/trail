@@ -1,6 +1,28 @@
 from trail.common import tags
 
 
+def test_trail_prefixed_tags_are_the_documented_form():
+    # Colab reserves "# @word" for its own annotations, so this spelling is primary.
+    assert tags.parse("# trail: cell mlp-init").cell == "mlp-init"
+    assert tags.parse("# trail: cell: mlp-init").cell == "mlp-init"
+    assert tags.parse("#trail:cell mlp-init").cell == "mlp-init"
+    assert tags.parse("  # trail: skip  ").skip
+
+    t = tags.parse("# trail: cp fixing dead tanh neurons")
+    assert t.checkpoint and t.checkpoint_note == "fixing dead tanh neurons"
+
+
+def test_both_spellings_can_share_a_cell():
+    t = tags.parse("# trail: cell mlp\n# @cp mixed spellings\nx = 1")
+    assert t.cell == "mlp"
+    assert t.checkpoint_note == "mixed spellings"
+
+
+def test_the_word_trail_alone_is_not_a_tag():
+    assert not tags.parse("# trail is a tool")
+    assert not tags.parse("trail.start('x')")
+
+
 def test_cell_tag_with_colon_and_space():
     assert tags.parse("# @cell: mlp-init\nx = 1").cell == "mlp-init"
     assert tags.parse("# @cell mlp-init").cell == "mlp-init"

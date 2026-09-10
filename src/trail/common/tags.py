@@ -1,7 +1,12 @@
 """Comment tags (SPEC 9.2).
 
-A tag is a whole line that is only a comment, e.g. ``# @cell: mlp-init``. Because
-they are ordinary comments the notebook still runs fine without Trail installed.
+A tag is a whole line that is only a comment. Two spellings mean the same thing::
+
+    # trail: cell mlp-init      <- documented form
+    # @cell: mlp-init           <- alias, kept working
+
+Because they are ordinary comments the notebook still runs fine without Trail
+installed.
 
 This module is shared by capture and the engine, so it must stay dependency-free
 and must never raise on weird input — capture calls it on every cell.
@@ -12,8 +17,20 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-# A tag owns the whole line: "# @name", "# @name value" or "# @name: value".
-TAG_RE = re.compile(r"^\s*#\s*@(\w+)(?:[:\s]\s*(.*))?$")
+# A tag owns the whole line: "<prefix>name", "<prefix>name value" or "<prefix>name: value".
+#
+# why: Colab reserves "# @word" for its own form annotations (@param, @title,
+# @markdown) and shows a warning on anything else, so the documented spelling is
+# "# trail: name". The "@" form is a silent alias — the spec was written with it,
+# and logs recorded with it must keep parsing (ADR 0003).
+TRAIL_RE = re.compile(r"^\s*#\s*trail\s*:\s*(\w+)(?:[:\s]\s*(.*))?$")
+AT_RE = re.compile(r"^\s*#\s*@(\w+)(?:[:\s]\s*(.*))?$")
+
+
+def match_tag(line: str) -> re.Match[str] | None:
+    """Match either spelling of a tag line."""
+    return TRAIL_RE.match(line) or AT_RE.match(line)
+
 
 KNOWN = frozenset({"cell", "cp", "checkpoint", "fix", "keep", "skip"})
 
@@ -61,7 +78,7 @@ def parse(code: str) -> Tags:
         return Tags()
 
     for line in lines:
-        match = TAG_RE.match(line)
+        match = match_tag(line)
         if match is None:
             continue
         name = match.group(1).lower()
@@ -92,6 +109,6 @@ def parse(code: str) -> Tags:
 def tag_lines(code: str) -> list[int]:
     """Indices of lines that are tags — the engine strips these when normalising."""
     try:
-        return [i for i, line in enumerate(code.splitlines()) if TAG_RE.match(line)]
+        return [i for i, line in enumerate(code.splitlines()) if match_tag(line)]
     except Exception:
         return []

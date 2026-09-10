@@ -463,6 +463,10 @@ trail.report() -> None                               # diagnostic report used by
 A tag is a whole line matching `^\s*#\s*@(\w+)(?:[:\s]\s*(.*))?$`. Tags can be on any line.
 Because they are comments, cells still run normally without Trail.
 
+> **Amended by ADR 0003:** the documented spelling is now `# trail: name value`, because
+> Colab reserves `# @word` for its own form annotations and warns on anything else. The
+> `# @name` form below still parses, as an alias. Read the table's `@` as either form.
+
 | Tag | Value | Meaning |
 |---|---|---|
 | `# @cell: mlp-init` | slug, required | Names the cell's identity. Most reliable way to track a cell. |
