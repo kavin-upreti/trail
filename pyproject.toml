@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trail-nb"
+dynamic = ["version"]
+description = "Records how notebook code evolves — code, outputs and plots, every run — and explains the optimisations."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+# Hard rule 3 (SPEC 3.3): the base package has ZERO third-party dependencies so it
+# installs into Colab without disturbing anything preinstalled. IPython is assumed
+# present because capture only ever runs inside a kernel.
+dependencies = []
+
+[project.optional-dependencies]
+mac = [
+  "typer>=0.12",
+  "rich>=13",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "jinja2>=3.1",
+  "pyyaml>=6",
+  "pygments>=2.17",
+  "markdown-it-py>=3",
+  "pydantic>=2.6",
+  "tomli-w>=1.0",
+]
+dev = [
+  "pytest",
+  "pytest-timeout",
+  "ruff",
+  "ipykernel",
+  "jupyter_client",
+  "matplotlib",
+  "numpy",
+  "httpx",
+]
+
+[project.scripts]
+trail = "trail.cli:app"
+
+[tool.hatch.version]
+path = "src/trail/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trail"]
+
+# hatchling ships every file under src/trail in the wheel, so data/, templates/ and
+# static/ are packaged without an explicit include list.
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+timeout = 120
+markers = [
+  "slow: real-kernel performance tests",
+  "live: hits the real `claude` CLI; needs TRAIL_LIVE=1",
+]
