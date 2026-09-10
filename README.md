@@ -5,8 +5,12 @@ the plots, the errors, every run — then groups those runs into meaningful vers
 uses Claude Code to explain each optimisation you made. A local web viewer replays the
 whole lecture as a sequence of changes, so you can revise from what you really did.
 
-**Status: in development.** Milestone 0 (scaffolding) is done; capture lands in M1.
-See `docs/SPEC.md` for the full design and `docs/STATE.md` for where things stand.
+**Status: in development.** Capture works (M1) — recording a notebook produces
+complete logs. The engine, analysis and viewer are still to come, so `trail log`,
+`trail analyze` and `trail serve` don't exist yet. See `docs/SPEC.md` for the full
+design and `docs/STATE.md` for where things stand.
+
+Try it now with `examples/demo_evolution.ipynb`.
 
 ## Install (Mac)
 
@@ -56,6 +60,25 @@ trail analyze makemore-3    # explain the checkpoints
 trail serve                 # open the viewer
 trail ask makemore-3 "why did scaling W1 help the tanh layer?"
 ```
+
+## What Trail can't see
+
+Honest limits of the capture layer, so a gap never looks like a bug:
+
+- Output written at the C level straight to file descriptor 1 (some compiled
+  libraries) bypasses Python's `sys.stdout`, so it isn't recorded.
+- Output from a background thread that arrives *after* the cell finishes belongs to
+  no run, and is dropped.
+- Cells using `%%capture` — that magic replaces stdout itself, so Trail sees nothing.
+- Interactive widgets are noted by MIME type but not recorded; they're live objects,
+  not results.
+- Anything that happened before you called `trail.start()`. Trail can't recover
+  history that was never recorded.
+
+Variable values are recorded as a *fingerprint*, not a copy: scalars and short
+strings as-is, arrays and tensors as shape and dtype, containers as a length. Trail
+never calls `repr()` on your objects, so a lazy loader or a CUDA tensor is never
+touched just because it happens to be in scope.
 
 ## Development
 

@@ -53,6 +53,9 @@ packages = ["src/trail"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+# Example notebooks are teaching material: cell order and import placement are
+# deliberate, and ruff's rules for a module don't apply to a lecture.
+extend-exclude = ["examples/*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
