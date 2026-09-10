@@ -29,15 +29,23 @@ Last updated: 2026-09-11 by Claude Code
   - Colab runs Python 3.13.15 / IPython 7.34.0, so 7.x support is required.
   - Tag syntax collided with Colab's form annotations; fixed per ADR 0003.
 
+- **M3 — Engine** (SPEC 10). 110 tests pass, ruff clean.
+  - `common/normalize.py` — tag-stripped `code_hash` and comment-free `semantic_hash`,
+    tokenizer-based with a line-wise fallback for magics and syntax errors.
+  - `engine/`: `loader` (tolerant JSONL, Drive conflict copies, partial last lines),
+    `identity` (tag → cell_id → fuzzy), `grouping` (versions, attempts, minor),
+    `metrics`, `steps` (checkpoint anchoring), `context`, `overrides`, `build`.
+  - CLI: `trail log`, `show`, `projects`, `rebuild`, `cells rename/merge/hide/unhide`,
+    `version`. Plus `config.py` for `~/.config/trail/config.toml`.
+
 ## In progress
-- Nothing. M0–M2 are closed and committed.
+- Nothing. M0–M3 are closed and committed.
 
 ## Next
-1. **M3 — Engine** (SPEC 10) + `trail log`, `trail rebuild`, `trail cells`.
-   ADR 0004 raises its priority: with no cell ids on Colab, **fuzzy identity matching
-   is the primary mechanism for untagged cells, not a fallback.** It needs testing
-   against realistic incremental edits, not just synthetic ones.
-2. M4 — CLI basics (`init`, `doctor`, `projects`, `template`, `version`, `show`).
+1. **M4 — CLI basics**: `init` (find the Drive folder, write config), `doctor`,
+   `template`. This is what the user needs to get Colab logs onto the Mac —
+   Google Drive for desktop is not installed there yet.
+2. M5 — Analysis (`claude -p`), the first milestone that spends usage.
 
 ## Decisions and findings
 - ADR 0001 — raw append-only logs.
@@ -53,6 +61,16 @@ Last updated: 2026-09-11 by Claude Code
 - **Deviation from SPEC 8.3:** `\r` overwrites in place rather than discarding the
   line. A terminal does not erase on carriage return, and "discard" lost the final
   tqdm bar (which ends in `\r`, not `\n`) entirely.
+- **Deviation from SPEC 10.7:** the metric float pattern now accepts a positive
+  exponent (`[eE][+-]?\d+`). The spec's `[eE]-?\d+` silently truncated a diverging
+  loss of `3.9e+47` to `3.9`, which is the single most important number to get right
+  when a learning rate is too high.
+- **Deviation from SPEC 10.5:** `loss_std` is computed only across re-runs with no
+  other cell running in between. Spread caused by an edit elsewhere is not noise, and
+  labelling it as noise was actively misleading (a real demo showed `noise ±2.1e+47`).
+- `trail log` additions beyond the spec, both because the spec-faithful output hid
+  the lesson: collapsed minor versions show what changed (`lr = 1.5 → lr = 0.5`), and
+  a version whose identical code produced very different numbers says so.
 
 ## Open questions
 - Answered: Colab does not populate `cell_id`.
