@@ -1,0 +1,284 @@
+- id: output-layer-init-scale
+  name: Small output-layer initialisation
+  category: initialization
+  aliases: [scale down logits at init, W2 * 0.01]
+  summary: Start with near-uniform predictions so the initial loss is about -log(1/vocab) instead of huge.
+  refs: []
+- id: activation-saturation
+  name: Tanh/sigmoid saturation and dead neurons
+  category: initialization
+  aliases: [saturated tanh, dead neurons, vanishing gradients]
+  summary: Pre-activations that are too large push tanh to ±1 where gradients vanish.
+  refs:
+    - {title: "Glorot & Bengio (2010) Understanding the difficulty of training deep feedforward neural networks", url: "http://proceedings.mlr.press/v9/glorot10a.html", kind: paper}
+- id: xavier-init
+  name: Xavier/Glorot initialisation
+  category: initialization
+  aliases: [glorot init]
+  summary: Scale weights by fan-in/fan-out to keep activation variance stable across layers.
+  refs:
+    - {title: "Glorot & Bengio (2010)", url: "http://proceedings.mlr.press/v9/glorot10a.html", kind: paper}
+- id: kaiming-init
+  name: Kaiming/He initialisation
+  category: initialization
+  aliases: [he init, gain / sqrt(fan_in), 5/3 gain for tanh]
+  summary: Scale weights by gain/sqrt(fan_in) so activations keep unit variance through nonlinearities.
+  refs:
+    - {title: "He et al. (2015) Delving Deep into Rectifiers", url: "https://arxiv.org/abs/1502.01852", kind: paper}
+    - {title: "torch.nn.init docs", url: "https://pytorch.org/docs/stable/nn.init.html", kind: docs}
+- id: residual-init-scaling
+  name: Scaling residual projections at init
+  category: initialization
+  aliases: [1/sqrt(2*n_layer), NANOGPT_SCALE_INIT]
+  summary: Shrink the init of layers that add into the residual stream so its variance doesn't grow with depth.
+  refs:
+    - {title: "Radford et al. (2019) Language Models are Unsupervised Multitask Learners (GPT-2)", url: "https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf", kind: paper}
+- id: batchnorm
+  name: Batch normalisation
+  category: normalization
+  aliases: [BatchNorm1d, batch norm]
+  summary: Normalise pre-activations with batch statistics, then learn a scale and shift.
+  refs:
+    - {title: "Ioffe & Szegedy (2015) Batch Normalization", url: "https://arxiv.org/abs/1502.03167", kind: paper}
+- id: layernorm
+  name: Layer normalisation
+  category: normalization
+  aliases: [LayerNorm, pre-norm]
+  summary: Normalise across features per example; no dependence on the batch.
+  refs:
+    - {title: "Ba, Kiros & Hinton (2016) Layer Normalization", url: "https://arxiv.org/abs/1607.06450", kind: paper}
+- id: rmsnorm
+  name: RMS normalisation
+  category: normalization
+  aliases: [RMSNorm]
+  summary: Like LayerNorm but only rescales by the root-mean-square, no mean subtraction.
+  refs:
+    - {title: "Zhang & Sennrich (2019) Root Mean Square Layer Normalization", url: "https://arxiv.org/abs/1910.07467", kind: paper}
+- id: bengio-mlp-lm
+  name: MLP language model with embeddings
+  category: language-modeling
+  aliases: [Bengio 2003, character embeddings, context window MLP]
+  summary: Embed previous tokens, concatenate, and predict the next token with an MLP.
+  refs:
+    - {title: "Bengio et al. (2003) A Neural Probabilistic Language Model", url: "https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf", kind: paper}
+- id: word-embeddings
+  name: Learned embeddings
+  category: language-modeling
+  aliases: [word2vec, embedding table]
+  summary: Map discrete tokens to dense vectors learned by gradient descent.
+  refs:
+    - {title: "Mikolov et al. (2013) Efficient Estimation of Word Representations in Vector Space", url: "https://arxiv.org/abs/1301.3781", kind: paper}
+- id: wavenet-hierarchy
+  name: Hierarchical / dilated context fusion
+  category: architecture
+  aliases: [WaveNet, FlattenConsecutive, dilated causal convolution]
+  summary: Fuse context progressively in a tree instead of squashing it all in one layer.
+  refs:
+    - {title: "van den Oord et al. (2016) WaveNet", url: "https://arxiv.org/abs/1609.03499", kind: paper}
+- id: residual-connections
+  name: Residual connections
+  category: architecture
+  aliases: [skip connections, x = x + f(x)]
+  summary: Add a block's output to its input so gradients flow directly through depth.
+  refs:
+    - {title: "He et al. (2015) Deep Residual Learning for Image Recognition", url: "https://arxiv.org/abs/1512.03385", kind: paper}
+- id: self-attention
+  name: Self-attention and the Transformer
+  category: architecture
+  aliases: [attention, multi-head attention, causal mask, scaled dot-product]
+  summary: Tokens exchange information via learned query/key/value weighted averages.
+  refs:
+    - {title: "Vaswani et al. (2017) Attention Is All You Need", url: "https://arxiv.org/abs/1706.03762", kind: paper}
+- id: gelu
+  name: GELU activation
+  category: architecture
+  aliases: [gelu tanh approximation]
+  summary: Smooth ReLU-like activation used in GPT-style models.
+  refs:
+    - {title: "Hendrycks & Gimpel (2016) Gaussian Error Linear Units", url: "https://arxiv.org/abs/1606.08415", kind: paper}
+- id: weight-tying
+  name: Tying input and output embeddings
+  category: architecture
+  aliases: [wte = lm_head, shared embeddings]
+  summary: Share the token embedding matrix with the output projection to save parameters and help learning.
+  refs:
+    - {title: "Press & Wolf (2016) Using the Output Embedding to Improve Language Models", url: "https://arxiv.org/abs/1608.05859", kind: paper}
+- id: gru
+  name: Gated recurrent units
+  category: architecture
+  aliases: [GRU, RNN gating]
+  summary: Recurrent cell with gates that control what to keep and update.
+  refs:
+    - {title: "Cho et al. (2014) Learning Phrase Representations using RNN Encoder-Decoder", url: "https://arxiv.org/abs/1406.1078", kind: paper}
+- id: dropout
+  name: Dropout
+  category: regularization
+  aliases: [nn.Dropout]
+  summary: Randomly zero activations during training to reduce overfitting.
+  refs:
+    - {title: "Srivastava et al. (2014) Dropout", url: "https://jmlr.org/papers/v15/srivastava14a.html", kind: paper}
+- id: weight-decay
+  name: Weight decay / L2 regularisation
+  category: regularization
+  aliases: [decoupled weight decay, AdamW weight decay, regularization loss]
+  summary: Pull weights toward zero; in AdamW it's applied separately from the gradient update.
+  refs:
+    - {title: "Loshchilov & Hutter (2017) Decoupled Weight Decay Regularization", url: "https://arxiv.org/abs/1711.05101", kind: paper}
+- id: adam
+  name: Adam / AdamW optimiser
+  category: optimizer
+  aliases: [adam, adamw, betas, eps]
+  summary: Per-parameter adaptive step sizes from running averages of gradients and squared gradients.
+  refs:
+    - {title: "Kingma & Ba (2014) Adam", url: "https://arxiv.org/abs/1412.6980", kind: paper}
+    - {title: "Loshchilov & Hutter (2017) AdamW", url: "https://arxiv.org/abs/1711.05101", kind: paper}
+- id: minibatch-sgd
+  name: Mini-batch SGD
+  category: optimizer
+  aliases: [minibatches, batch size, torch.randint batch]
+  summary: Estimate the gradient from a small random batch to take many cheap steps.
+  refs: []
+- id: lr-search
+  name: Finding a good learning rate
+  category: schedule
+  aliases: [lr sweep, exponential lr range test, lri]
+  summary: Sweep learning rates exponentially and pick where loss falls fastest before blowing up.
+  refs:
+    - {title: "Smith (2015) Cyclical Learning Rates for Training Neural Networks", url: "https://arxiv.org/abs/1506.01186", kind: paper}
+- id: lr-decay
+  name: Learning-rate decay
+  category: schedule
+  aliases: [step decay, lr = 0.01 after 100k steps]
+  summary: Lower the learning rate later in training to settle into a better minimum.
+  refs: []
+- id: cosine-schedule
+  name: Cosine learning-rate schedule
+  category: schedule
+  aliases: [cosine decay, cosine annealing]
+  summary: Decay the learning rate along a cosine curve toward a minimum.
+  refs:
+    - {title: "Loshchilov & Hutter (2016) SGDR", url: "https://arxiv.org/abs/1608.03983", kind: paper}
+- id: lr-warmup
+  name: Learning-rate warmup
+  category: schedule
+  aliases: [linear warmup]
+  summary: Ramp the learning rate up over the first steps to avoid early instability.
+  refs:
+    - {title: "Goyal et al. (2017) Accurate, Large Minibatch SGD", url: "https://arxiv.org/abs/1706.02677", kind: paper}
+- id: gradient-clipping
+  name: Gradient norm clipping
+  category: optimizer
+  aliases: [clip_grad_norm_]
+  summary: Rescale gradients whose global norm is too large to prevent destabilising updates.
+  refs:
+    - {title: "Pascanu, Mikolov & Bengio (2012) On the difficulty of training RNNs", url: "https://arxiv.org/abs/1211.5063", kind: paper}
+- id: gradient-accumulation
+  name: Gradient accumulation
+  category: efficiency
+  aliases: [grad_accum_steps, micro-batches]
+  summary: Sum gradients over several micro-batches to simulate a larger batch on limited memory.
+  refs: []
+- id: vectorization
+  name: Vectorisation and broadcasting
+  category: efficiency
+  aliases: [remove python loops, broadcasting rules, keepdim]
+  summary: Replace Python loops with tensor operations; broadcasting stretches shapes automatically.
+  refs:
+    - {title: "PyTorch broadcasting semantics", url: "https://pytorch.org/docs/stable/notes/broadcasting.html", kind: docs}
+    - {title: "NumPy broadcasting", url: "https://numpy.org/doc/stable/user/basics.broadcasting.html", kind: docs}
+- id: fused-cross-entropy
+  name: Fused, numerically stable cross-entropy
+  category: numerics
+  aliases: [F.cross_entropy, logsumexp trick, subtract max logit]
+  summary: One fused op that avoids overflow and is faster than manual softmax + log + mean.
+  refs:
+    - {title: "torch.nn.functional.cross_entropy", url: "https://pytorch.org/docs/stable/generated/torch.nn.functional.cross_entropy.html", kind: docs}
+- id: manual-backprop
+  name: Manual backpropagation
+  category: debugging
+  aliases: [backprop ninja, chain rule by hand, cmp()]
+  summary: Derive and code gradients yourself, checking against autograd.
+  refs:
+    - {title: "Rumelhart, Hinton & Williams (1986) Learning representations by back-propagating errors", url: "https://doi.org/10.1038/323533a0", kind: paper}
+- id: activation-diagnostics
+  name: Activation and gradient diagnostics
+  category: debugging
+  aliases: [histograms of activations, update-to-data ratio, saturation plots]
+  summary: Plot activations, gradients, and update/data ratios per layer to spot training problems.
+  refs: []
+- id: no-grad
+  name: Disabling gradient tracking
+  category: efficiency
+  aliases: [torch.no_grad, eval mode]
+  summary: Skip building the autograd graph during evaluation to save memory and time.
+  refs:
+    - {title: "torch.no_grad", url: "https://pytorch.org/docs/stable/generated/torch.no_grad.html", kind: docs}
+- id: train-val-split
+  name: Train / validation / test splits
+  category: data
+  aliases: [dev set, overfitting check, 80/10/10]
+  summary: Measure generalisation on data the model never trained on.
+  refs: []
+- id: bpe-tokenization
+  name: Byte-pair encoding tokenisation
+  category: data
+  aliases: [BPE, tiktoken, merges]
+  summary: Build a vocabulary by repeatedly merging the most frequent adjacent pairs.
+  refs:
+    - {title: "Sennrich, Haddow & Birch (2015) Neural Machine Translation of Rare Words with Subword Units", url: "https://arxiv.org/abs/1508.07909", kind: paper}
+- id: reproducibility-seeds
+  name: Seeds and reproducibility
+  category: debugging
+  aliases: [torch.Generator().manual_seed, random seed]
+  summary: Fix random seeds so comparisons between runs aren't just noise.
+  refs:
+    - {title: "PyTorch reproducibility notes", url: "https://pytorch.org/docs/stable/notes/randomness.html", kind: docs}
+- id: tf32-matmul
+  name: TF32 matmul precision
+  category: efficiency
+  aliases: [set_float32_matmul_precision('high')]
+  summary: Let tensor cores use reduced-precision internals for float32 matmuls, much faster.
+  refs:
+    - {title: "torch.set_float32_matmul_precision", url: "https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html", kind: docs}
+- id: mixed-precision
+  name: Mixed precision (bf16/fp16 autocast)
+  category: efficiency
+  aliases: [torch.autocast, bfloat16, AMP]
+  summary: Run most ops in 16-bit while keeping sensitive parts in float32.
+  refs:
+    - {title: "Micikevicius et al. (2017) Mixed Precision Training", url: "https://arxiv.org/abs/1710.03740", kind: paper}
+    - {title: "torch.amp docs", url: "https://pytorch.org/docs/stable/amp.html", kind: docs}
+- id: torch-compile
+  name: torch.compile
+  category: efficiency
+  aliases: [kernel fusion, graph compilation]
+  summary: Compile the model into fused kernels to cut Python overhead and memory traffic.
+  refs:
+    - {title: "torch.compile", url: "https://pytorch.org/docs/stable/generated/torch.compile.html", kind: docs}
+- id: flash-attention
+  name: FlashAttention
+  category: efficiency
+  aliases: [scaled_dot_product_attention, fused attention]
+  summary: IO-aware attention kernel that never materialises the full attention matrix.
+  refs:
+    - {title: "Dao et al. (2022) FlashAttention", url: "https://arxiv.org/abs/2205.14135", kind: paper}
+- id: nice-numbers
+  name: Hardware-friendly sizes
+  category: efficiency
+  aliases: [vocab 50304, powers of two]
+  summary: Pad dimensions to multiples of large powers of two so GPU kernels run efficiently.
+  refs: []
+- id: ddp
+  name: Distributed data parallel training
+  category: efficiency
+  aliases: [DDP, torchrun, all-reduce]
+  summary: Run a model copy per GPU and average gradients across them.
+  refs:
+    - {title: "PyTorch DDP notes", url: "https://pytorch.org/docs/stable/notes/ddp.html", kind: docs}
+- id: large-batch-gpt3-hparams
+  name: GPT-3 style training hyperparameters
+  category: schedule
+  aliases: [GPT-3 paper settings, batch size ramp]
+  summary: The optimiser, schedule, and batch settings reported for GPT-3.
+  refs:
+    - {title: "Brown et al. (2020) Language Models are Few-Shot Learners", url: "https://arxiv.org/abs/2005.14165", kind: paper}

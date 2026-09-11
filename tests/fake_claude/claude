@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""A stand-in for the real `claude` CLI (SPEC 17.3).
+
+Put first on PATH by the tests. FAKE_CLAUDE_MODE selects the behaviour so every
+branch in the runner can be exercised without spending a token.
+"""
+
+import json
+import os
+import sys
+import time
+
+VALID = {
+    "title": "Scaled the output layer down at init",
+    "summary": "Multiplying W2 by 0.01 makes the initial logits nearly uniform.",
+    "changes": [{"what": "W2 scaled by 0.01", "detail": "so logits start near zero"}],
+    "why": "A confident wrong guess costs a lot of loss at step zero.",
+    "effect": {"metric": "loss", "before": 27.0, "after": 3.3,
+               "direction": "improved", "confidence": "high", "noise_note": None},
+    "tradeoffs": ["Too small and the layer learns slowly at first."],
+    "concepts": ["output-layer-init-scale", "not-a-real-concept-id"],
+    "other_concepts": [{"name": "Logit scale", "why_relevant": "same idea, different name"}],
+    "context_warnings": [],
+    "plot_observations": None,
+    "try_next": ["Try 0.1 and compare."],
+    "self_check": [{"question": "Why is the initial loss 27?", "answer": "Confident wrong logits."}],
+}
+
+
+def wrapper(text, **extra):
+    payload = {"type": "result", "subtype": "success", "is_error": False,
+               "result": text, "session_id": "fake-session-1", "duration_ms": 1234,
+               "num_turns": 1, "total_cost_usd": 0.01}
+    payload.update(extra)
+    return json.dumps(payload)
+
+
+mode = os.environ.get("FAKE_CLAUDE_MODE", "valid")
+prompt = sys.stdin.read() if not sys.stdin.isatty() else ""
+counter_file = os.environ.get("FAKE_CLAUDE_COUNTER")
+attempt = 0
+if counter_file:
+    try:
+        attempt = int(open(counter_file).read().strip() or 0)
+    except (OSError, ValueError):
+        attempt = 0
+    with open(counter_file, "w") as handle:
+        handle.write(str(attempt + 1))
+
+if mode == "valid":
+    print(wrapper("```json\n" + json.dumps(VALID) + "\n```"))
+elif mode == "chatty":
+    print(wrapper("Sure! Here you go:\n" + json.dumps(VALID) + "\nHope that helps."))
+elif mode == "retry":
+    print(wrapper("not json at all" if attempt == 0 else json.dumps(VALID)))
+elif mode == "always_invalid":
+    print(wrapper("still not json"))
+elif mode == "missing_field":
+    broken = dict(VALID)
+    broken.pop("title")
+    print(wrapper(json.dumps(broken)))
+elif mode == "timeout":
+    time.sleep(30)
+elif mode == "auth":
+    sys.stderr.write("Invalid API key. Please run `claude` to authenticate.\n")
+    sys.exit(1)
+elif mode == "usage_limit":
+    sys.stderr.write("You have reached your usage limit. Try again later.\n")
+    sys.exit(1)
+elif mode == "usage_limit_in_result":
+    print(wrapper("I've hit the usage limit for this account."))
+elif mode == "nonzero":
+    sys.stderr.write("something went wrong\nsecond line\n")
+    sys.exit(2)
+elif mode == "not_json_output":
+    print("this is not json")
+elif mode == "echo_prompt":
+    print(wrapper(json.dumps({**VALID, "summary": prompt[:200]})))
+else:
+    print(wrapper(json.dumps(VALID)))

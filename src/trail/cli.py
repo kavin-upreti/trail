@@ -89,8 +89,18 @@ else:
         )
 
     def _build(root: Path, project: str, force: bool = False) -> tuple[Build, ProjectPaths]:
+        from trail.analysis import store
+
         paths = ProjectPaths(root, project)
-        return build_cached(paths, _engine_config(), force=force), paths
+        result = build_cached(paths, _engine_config(), force=force)
+        # A second pass so versions.json records which steps already have an analysis.
+        states = store.states(paths, result.steps)
+        if force or not (paths.derived / "versions.json").is_file():
+            from trail.engine.build import write as write_build
+
+            write_build(paths, result, states)
+        result.analysis_state = states
+        return result, paths
 
     # -- formatting --------------------------------------------------------
 
@@ -303,11 +313,12 @@ else:
             )
 
         hidden_count = 0
+        titles = _analysis_titles(paths, result)
         for item in cells:
             if item.hidden and not show_all and cell is None:
                 hidden_count += 1
                 continue
-            _print_cell(item, show_all)
+            _print_cell(item, show_all, titles)
 
         if hidden_count:
             console.print(
@@ -319,17 +330,32 @@ else:
             for warning in result.warnings:
                 console.print(f"  • {warning}")
 
-        if result.steps:
+        explained = sum(1 for s in result.steps if result.analysis_state.get(s.key) == "fresh")
+        todo = len(result.steps) - explained
+        if todo:
             console.print(
-                f"\n[dim]{_plural(len(result.steps), 'checkpoint')} ready to explain — "
-                f"`trail analyze {name}` arrives in M5.[/dim]"
+                f"\n[dim]{_plural(todo, 'checkpoint')} not explained yet — "
+                f"run `trail analyze {name}`.[/dim]"
             )
+        elif result.steps:
+            console.print(f"\n[dim]All {len(result.steps)} checkpoints explained.[/dim]")
         console.print(f"[dim]built from {paths.runs}[/dim]\n")
 
     def _matches(cell_obj, needle: str) -> bool:
         return needle in (cell_obj.key, cell_obj.name) or cell_obj.key.split(":", 1)[-1] == needle
 
-    def _print_cell(cell_obj, show_all: bool) -> None:
+    def _analysis_titles(paths, result) -> dict[tuple[str, int], str]:
+        """Titles of saved analyses, keyed by (identity, version the step ends on)."""
+        from trail.analysis import store
+
+        found: dict[tuple[str, int], str] = {}
+        for step in result.steps:
+            saved = store.load(paths, step)
+            if saved and saved.analysis.get("title"):
+                found[(step.identity, step.end_n)] = saved.analysis["title"]
+        return found
+
+    def _print_cell(cell_obj, show_all: bool, titles: dict | None = None) -> None:
         header = Text(f"\n{cell_obj.name}", style="bold")
         header.append(f"  [{cell_obj.key}]", style=DIM)
         if cell_obj.hidden:
@@ -359,6 +385,9 @@ else:
                 continue
             flush()
             console.print(_version_line(version, previous))
+            title = (titles or {}).get((cell_obj.key, version.n))
+            if title:
+                console.print(f"      [green]✓ {title}[/green]")
             previous = version
         flush()
 
@@ -430,6 +459,178 @@ else:
         console.print()
         console.print(_metric_text(right, left))
         console.print()
+
+    @app.command()
+    def analyze(
+        project: str = typer.Argument(None),
+        cell: str = typer.Option(None, "--cell", help="Only steps in this cell"),
+        step_key: str = typer.Option(None, "--step", help="Only this step key"),
+        dry_run: bool = typer.Option(False, "--dry-run", help="Write the bundle, call nothing"),
+        yes: bool = typer.Option(False, "--yes", help="Skip the confirmation"),
+        limit: int = typer.Option(None, "--limit", help="Analyse at most this many steps"),
+        force: bool = typer.Option(False, "--force", help="Re-analyse steps already done"),
+        logs: str = typer.Option(None, "--logs"),
+    ) -> None:
+        """Explain your checkpoints with Claude."""
+        from trail.analysis import project_claude_md, store
+        from trail.analysis.bundle import build_bundle
+        from trail.analysis.runner import AuthProblem, ClaudeNotFound, UsageLimit
+
+        root = _root(logs)
+        name = _pick_project(root, project)
+        result, paths = _build(root, name)
+
+        pending = _steps_to_analyse(result, paths, cell, step_key, force)
+        if not pending:
+            console.print(
+                "Nothing to explain — every checkpoint already has an analysis. "
+                "Use --force to redo them."
+            )
+            return
+        if limit:
+            pending = pending[:limit]
+
+        settings = config_mod.load()
+        max_per_run = int(settings.analyze.get("max_per_run", 10))
+        if not dry_run and not yes and len(pending) > max_per_run:
+            console.print(f"That's {_plural(len(pending), 'step')} to analyse:")
+            for step in pending:
+                console.print(f"  • {_step_label(result, step)}")
+            if not typer.confirm("Go ahead?"):
+                raise typer.Exit(0)
+
+        claude = settings.claude
+        done = failed = 0
+        for index, step in enumerate(pending, start=1):
+            label = _step_label(result, step)
+            console.print(f"[dim]({index}/{len(pending)})[/dim] {label}")
+            try:
+                bundle = build_bundle(
+                    result, step, paths, include_images=bool(claude.get("include_images", True))
+                )
+            except Exception as exc:
+                console.print(f"  [red]couldn't build the bundle: {exc}[/red]")
+                failed += 1
+                continue
+
+            if dry_run:
+                target = store.analysis_path(paths, step, ".bundle.md")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(bundle.text, encoding="utf-8")
+                console.print(
+                    f"  wrote {target} ({bundle.size / 1024:.1f} KB, "
+                    f"{len(bundle.plot_paths)} plot(s))"
+                )
+                done += 1
+                continue
+
+            try:
+                analysis, meta = _analyse_one(bundle, paths, claude)
+            except ClaudeNotFound as exc:
+                _fail(str(exc))
+            except AuthProblem as exc:
+                _fail(str(exc), "Run `claude` once interactively, then try again.")
+            except UsageLimit:
+                remaining = len(pending) - index + 1
+                console.print(
+                    f"\n[yellow]Hit your usage limit.[/yellow] "
+                    f"{_plural(remaining, 'step')} left — they stay pending, "
+                    f"so just run this again later."
+                )
+                break
+            except TimeoutError:
+                console.print("  [yellow]timed out — skipping this step[/yellow]")
+                failed += 1
+                continue
+            except Exception as exc:
+                console.print(f"  [red]{exc}[/red]")
+                failed += 1
+                continue
+
+            saved = store.save(paths, step, analysis, meta)
+            markdown = saved.with_suffix(".md")
+            from trail.analysis.render import render
+
+            markdown.write_text(render(analysis, meta), encoding="utf-8")
+            console.print(f"  [green]{analysis['title']}[/green]")
+            console.print(f"  [dim]{markdown}[/dim]")
+            done += 1
+
+        if done and not dry_run:
+            rebuilt, _ = _build(root, name, force=True)
+            project_claude_md.write(paths, rebuilt)
+        summary = f"\n{_plural(done, 'step')} done"
+        if failed:
+            summary += f", {failed} failed"
+        console.print(summary + f". Read them in {paths.analyses}")
+
+    def _steps_to_analyse(result, paths, cell, step_key, force):
+        from trail.analysis import store
+
+        steps = result.steps
+        if step_key:
+            steps = [s for s in steps if s.key.startswith(step_key)]
+        if cell:
+            target = result.cell(cell)
+            if target is None:
+                _fail(f"No cell matching {cell!r}.")
+            steps = [s for s in steps if s.identity == target.key]
+        if force:
+            return steps
+        return [s for s in steps if store.state(paths, s) != store.FRESH]
+
+    def _step_label(result, step) -> str:
+        target = result.cell(step.identity)
+        name = target.name if target else step.identity
+        return f"{name} v{step.start_n}→v{step.end_n} · {step.note or '(no note)'}"
+
+    def _analyse_one(bundle, paths, claude_settings):
+        """One Claude call, with a single corrective retry if the JSON is unusable."""
+        import hashlib
+
+        from trail._version import __version__
+        from trail.analysis import concepts as concepts_mod
+        from trail.analysis import runner
+        from trail.analysis.validate import InvalidAnalysis, extract_json, validate
+
+        kwargs = dict(
+            binary=str(claude_settings.get("binary", "claude")),
+            model=str(claude_settings.get("model", "")),
+            max_turns=int(claude_settings.get("analysis_max_turns", 4)),
+            timeout=int(claude_settings.get("analysis_timeout_s", 240)),
+        )
+        reply = runner.run(bundle.text, paths.dir, **kwargs)
+
+        try:
+            analysis = validate(extract_json(reply.text), concepts_mod.known)
+        except InvalidAnalysis as first_error:
+            # why: one retry, quoting the exact complaint. Models usually fix a schema
+            # slip immediately, and a second failure means something is really wrong.
+            console.print(f"  [dim]reply wasn't valid ({first_error}); asking once more[/dim]")
+            retry_prompt = (
+                f"Your previous reply could not be used: {first_error}.\n"
+                "Reply with ONE corrected JSON object matching the schema, and nothing else.\n\n"
+                f"Previous reply:\n{reply.text[:6000]}"
+            )
+            reply = runner.run(retry_prompt, paths.dir, **kwargs)
+            try:
+                analysis = validate(extract_json(reply.text), concepts_mod.known)
+            except InvalidAnalysis as second_error:
+                failed_path = paths.analyses / "failed.txt"
+                failed_path.parent.mkdir(parents=True, exist_ok=True)
+                failed_path.write_text(reply.text, encoding="utf-8")
+                raise RuntimeError(
+                    f"Claude's reply still wasn't usable ({second_error}); "
+                    f"saved it to {failed_path}"
+                ) from second_error
+
+        meta = {
+            "model": kwargs["model"] or "default",
+            "trail_version": __version__,
+            "bundle_sha1": hashlib.sha1(bundle.text.encode("utf-8")).hexdigest()[:12],
+            **reply.meta(),
+        }
+        return analysis, meta
 
     cells_app = typer.Typer(help="Fix how cells were identified.")
     app.add_typer(cells_app, name="cells")

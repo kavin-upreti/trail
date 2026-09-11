@@ -49,6 +49,7 @@ class Build:
     loaded: LoadedProject = field(default_factory=LoadedProject)
     warnings: list[str] = field(default_factory=list)
     identity_of: dict[int, str] = field(default_factory=dict)
+    analysis_state: dict[str, str] = field(default_factory=dict)
 
     @property
     def runs(self) -> list[Run]:
@@ -220,10 +221,13 @@ def write(paths: ProjectPaths, result: Build, analysis_state: dict[str, str] | N
 
 
 def build_cached(
-    paths: ProjectPaths, config: EngineConfig | None = None, force: bool = False
+    paths: ProjectPaths,
+    config: EngineConfig | None = None,
+    force: bool = False,
+    analysis_state: dict[str, str] | None = None,
 ) -> Build:
     """Build, writing versions.json unless nothing has changed since last time."""
     result = build(paths, config)
     if force or not is_fresh(paths):
-        write(paths, result)
+        write(paths, result, analysis_state)
     return result
