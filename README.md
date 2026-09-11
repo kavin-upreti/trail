@@ -114,6 +114,24 @@ strings as-is, arrays and tensors as shape and dtype, containers as a length. Tr
 never calls `repr()` on your objects, so a lazy loader or a CUDA tensor is never
 touched just because it happens to be in scope.
 
+## Running it day to day
+
+Once, on the Mac:
+
+```bash
+uv tool install -e ".[mac]"     # puts `trail` on your PATH
+```
+
+Then whenever you want to look at what you recorded:
+
+```bash
+trail serve                      # http://127.0.0.1:8765, Ctrl+C to stop
+```
+
+Leave it running while you work — the page notices when new runs sync from your
+notebook and offers to reload. It reads your logs folder directly, so there's no
+import step: record in Colab or VS Code, then refresh.
+
 ## Development
 
 ```bash

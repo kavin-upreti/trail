@@ -4,28 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Trail{% endblock %}</title>
+<link rel="stylesheet" href="/static/css/fonts.css">
 <link rel="stylesheet" href="/static/css/trail.css">
 <style>{{ pygments_css }}</style>
 </head>
 <body>
 <header class="masthead">
   <div class="masthead-inner">
-    <a class="wordmark" href="/">Trail</a>
-    <nav>
-      {% block nav %}{% endblock %}
-    </nav>
+    <div class="crumbs">
+      <a class="wordmark" href="/">Trail</a>
+      {% if project %}
+        <span class="sep">/</span>
+        <a href="/p/{{ project }}">{{ project }}</a>
+      {% endif %}
+      {% block crumb %}{% endblock %}
+    </div>
     <button class="theme-toggle" data-theme-toggle type="button">Light / dark</button>
   </div>
 </header>
 
-<main class="shell">
+<main class="shell {{ "is-wide" if wide }}">
+  {% if project %}
+  <nav class="tabs" aria-label="Sections of this project">
+    <a href="/p/{{ project }}" {% if section == "cells" %}aria-current="page"{% endif %}>Cells</a>
+    <a href="/p/{{ project }}/story" {% if section == "story" %}aria-current="page"{% endif %}>Story</a>
+    <a href="/p/{{ project }}/concepts" {% if section == "concepts" %}aria-current="page"{% endif %}>Concepts</a>
+    <a href="/p/{{ project }}/qa" {% if section == "qa" %}aria-current="page"{% endif %}>Questions</a>
+  </nav>
+  {% endif %}
+
   {% if stamp is defined and project %}
   <div class="banner" data-refresh-banner hidden>
-    <span>New runs have synced.</span>
-    <button class="button is-quiet" type="button" onclick="window.location.reload()">Refresh</button>
+    <span>New runs have synced from your notebook.</span>
+    <button class="button is-quiet" type="button" onclick="window.location.reload()">Reload</button>
   </div>
   <span hidden data-stamp-url="/api/p/{{ project }}/stamp" data-stamp="{{ stamp }}"></span>
   {% endif %}
+
   {% block content %}{% endblock %}
 </main>
 

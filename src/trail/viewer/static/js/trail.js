@@ -138,6 +138,27 @@
     });
   });
 
+  // -- side-by-side / one-column diff ------------------------------------
+  document.querySelectorAll("[data-diff-view]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var wanted = button.getAttribute("data-diff-view");
+      document.querySelectorAll("[data-diff-view]").forEach(function (other) {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+      document.querySelectorAll("[data-diff-pane]").forEach(function (pane) {
+        pane.hidden = pane.getAttribute("data-diff-pane") !== wanted;
+      });
+      try { localStorage.setItem("trail-diff-view", wanted); } catch (e) {}
+    });
+  });
+  try {
+    var savedView = localStorage.getItem("trail-diff-view");
+    if (savedView) {
+      var target = document.querySelector('[data-diff-view="' + savedView + '"]');
+      if (target) target.click();
+    }
+  } catch (e) {}
+
   // -- story mode keyboard ----------------------------------------------
   var chapters = Array.prototype.slice.call(document.querySelectorAll(".chapter"));
   if (chapters.length) {

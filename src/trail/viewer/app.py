@@ -52,6 +52,27 @@ def create_app(root: Path) -> FastAPI:
     templates = Jinja2Templates(directory=str(HERE / "templates"))
     templates.env.filters["metric_name"] = primary_name
 
+    def _markdown(text: str, inline: bool = False) -> str:
+        """Render Claude's prose. HTML is disabled (SPEC 13.1) — this text is data.
+
+        why: the analysis is written in Markdown, so without this the page showed
+        literal backticks around every `variable` and `function()`.
+        """
+        if not text:
+            return ""
+        try:
+            from markdown_it import MarkdownIt
+
+            md = MarkdownIt("commonmark", {"html": False, "linkify": False})
+            return md.renderInline(text) if inline else md.render(text)
+        except ImportError:
+            import html as html_mod
+
+            return html_mod.escape(text)
+
+    templates.env.filters["md"] = _markdown
+    templates.env.filters["md_inline"] = lambda text: _markdown(text, inline=True)
+
     def _concept_lookup(concept_id: str):
         from trail.analysis import concepts as concepts_mod
 
@@ -230,6 +251,7 @@ def create_app(root: Path) -> FastAPI:
         return page(
             request,
             "overview.html",
+            section="cells",
             project=project,
             result=result,
             cells=cells,
@@ -258,6 +280,8 @@ def create_app(root: Path) -> FastAPI:
         return page(
             request,
             "cell.html",
+            section="cells",
+            wide=True,
             project=project,
             cell=cell,
             spine=spine(cell, result, paths),
@@ -297,6 +321,9 @@ def create_app(root: Path) -> FastAPI:
                     "left": left,
                     "right": right,
                     "rows": diffs.side_by_side(left.code, right.code),
+                    "unified": diffs.unified(
+                        left.code, right.code, f"v{step.start_n}", f"v{step.end_n}"
+                    ),
                     "left_out": outputs_for(left, project),
                     "right_out": outputs_for(right, project),
                     "left_metrics": version_metrics(left),
@@ -341,7 +368,7 @@ def create_app(root: Path) -> FastAPI:
             for cid, uses in sorted(used.items())
             if concepts_mod.get(cid)
         ]
-        return page(request, "concepts.html", project=project, entries=entries)
+        return page(request, "concepts.html", section="concepts", project=project, entries=entries)
 
     @app.get("/p/{project}/qa", response_class=HTMLResponse)
     def qa(request: Request, project: str) -> HTMLResponse:
@@ -350,6 +377,7 @@ def create_app(root: Path) -> FastAPI:
         return page(
             request,
             "qa.html",
+            section="qa",
             project=project,
             answers=[{"name": p.stem, "text": p.read_text(encoding="utf-8")} for p in files],
         )

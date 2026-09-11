@@ -1,12 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Concepts{% if project %} — {{ project }}{% endif %} — Trail{% endblock %}
-{% block nav %}
-  {% if project %}
-  <a href="/p/{{ project }}">Cells</a>
-  <a href="/p/{{ project }}/story">Story</a>
-  <a href="/p/{{ project }}/concepts" aria-current="page">Concepts</a>
-  {% endif %}
-{% endblock %}
 {% block content %}
 <h1>{% if project %}What {{ project }} taught you{% else %}Concept index{% endif %}</h1>
 <p class="muted reading">

@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% block title %}Story — {{ project }} — Trail{% endblock %}
-{% block nav %}
-  <a href="/p/{{ project }}">Cells</a>
-  <a href="/p/{{ project }}/story" aria-current="page">Story</a>
-  <a href="/p/{{ project }}/concepts">Concepts</a>
-{% endblock %}
 {% block content %}
 <h1>{{ project }}, start to finish</h1>
-<p class="muted reading">
-  Every checkpoint you marked, in the order it happened. Press <kbd>j</kbd> and <kbd>k</kbd> to move
-  between steps, <kbd>e</kbd> to open a diff.
+<p class="lede">
+  Every checkpoint you marked, in the order it happened — what you changed, and what it did.
+  This is the page to revise from.
 </p>
+{% if sections %}
+<p class="hint">
+  <kbd>j</kbd> and <kbd>k</kbd> move between steps · <kbd>e</kbd> opens the code change ·
+  the list on the left is where you are
+</p>
+{% endif %}
 
 {% if not sections %}
 <div class="empty reading">
@@ -24,7 +25,9 @@
   <nav class="rail" aria-label="Steps">
     <ol>
       {% for section in sections %}
-      <li><a href="#step-{{ loop.index }}" class="{{ 'is-current' if loop.first }}">{{ section.cell.name }}</a></li>
+      <li><a href="#step-{{ loop.index }}" class="{{ 'is-current' if loop.first }}" title="{{ section.step.note or section.cell.name }}">
+        {{ loop.index }}. {{ (section.step.note or section.cell.name) | truncate(38, true, "…") }}
+      </a></li>
       {% endfor %}
     </ol>
   </nav>
@@ -33,7 +36,10 @@
     {% for section in sections %}
     <section class="chapter" id="step-{{ loop.index }}">
       <div class="chapter-body">
-        <p class="muted small mono">{{ section.cell.name }} · v{{ section.step.start_n }}{% if not section.first %} → v{{ section.step.end_n }}{% endif %}</p>
+        <p class="muted small" style="display:flex;align-items:center;gap:8px">
+          <span class="chapter-index">{{ loop.index }} of {{ sections | length }}</span>
+          <span class="mono">{{ section.cell.name }} · v{{ section.step.start_n }}{% if not section.first %} → v{{ section.step.end_n }}{% endif %}</span>
+        </p>
         {% if section.step.note %}<p class="chapter-note">{{ section.step.note }}</p>{% endif %}
 
         {% if section.analysis %}
@@ -51,17 +57,14 @@
       </div>
 
       <div class="chapter-wide">
-        {% if not section.first %}
-        <details>
-          <summary>The change</summary>
-          {{ m.diff_table(section.rows) }}
+        <details {% if not section.analysis %}open{% endif %}>
+          <summary>{{ "The code at this point" if section.first else "The change to the code" }}</summary>
+          {% if section.first %}
+            {{ m.diff_table(section.rows) }}
+          {% else %}
+            <pre class="unified">{% for kind, line in section.unified %}<span class="{{ kind }}">{{ line | safe }}</span>{% endfor %}</pre>
+          {% endif %}
         </details>
-        {% else %}
-        <details>
-          <summary>The code</summary>
-          {{ m.diff_table(section.rows) }}
-        </details>
-        {% endif %}
 
         {% if section.left_out.images or section.right_out.images %}
         <div class="two-up" style="margin-top:16px">

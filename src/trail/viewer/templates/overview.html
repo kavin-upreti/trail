@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% block title %}{{ project }} — Trail{% endblock %}
-{% block nav %}
-  <a href="/p/{{ project }}" aria-current="page">Cells</a>
-  <a href="/p/{{ project }}/story">Story</a>
-  <a href="/p/{{ project }}/concepts">Concepts</a>
-{% endblock %}
 {% block content %}
 <h1>{{ project }}</h1>
-<p class="muted">
-  {{ result.runs | length }} runs across {{ sessions | length }} session{{ "" if sessions|length == 1 else "s" }}.
+<p class="lede">
+  Every cell you ran, grouped into the versions that actually differ.
+  <strong>{{ result.runs | length }} runs</strong> became
+  <strong>{{ cells | rejectattr("hidden") | list | length }} cells</strong>
+  across {{ sessions | length }} session{{ "" if sessions|length == 1 else "s" }}.
+  Pick a cell to see how it changed, or read the story to go through the whole thing in order.
 </p>
 
 {% set unexplained = [] %}
@@ -31,6 +30,8 @@
 
 <div class="panel">
   <div class="panel-head"><h2>Cells</h2></div>
+  <p class="hint">A cell is one block in your notebook, tracked across every edit and re-run.
+     Click one to compare two of its versions side by side.</p>
   <div class="rows">
     {% for cell in cells if not cell.hidden %}
     <a class="row" href="/p/{{ project }}/cell/{{ cell.key }}">

@@ -19,11 +19,9 @@
   --checkpoint-wash: rgba(183, 121, 31, 0.10);
   --signal-wash: rgba(36, 87, 197, 0.08);
 
-  /* SPEC 13.5 asks for IBM Plex with a system fallback. We ship the fallback:
-     it is already on the machine, keeps the viewer fully offline, and adds no
-     binaries to the repo. */
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  /* IBM Plex, bundled as woff2 (SIL OFL) so the viewer needs no network. */
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   --spine-width: 280px;
   --reading: 720px;
@@ -121,12 +119,46 @@ code, pre, .mono { font-family: var(--mono); font-size: 13.5px; line-height: 1.5
 }
 .wordmark:hover { text-decoration: none; }
 
-.masthead nav { display: flex; gap: 16px; flex: 1; }
-.masthead nav a { color: var(--graphite); text-decoration: none; }
-.masthead nav a:hover,
-.masthead nav a[aria-current="page"] { color: var(--ink); text-decoration: underline; }
+.crumbs { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+.crumbs a { color: var(--graphite); text-decoration: none; white-space: nowrap; }
+.crumbs a:hover { color: var(--ink); text-decoration: underline; }
+.crumbs .sep { color: var(--rule); }
+.crumbs .here { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin: 0 0 28px; }
+.tabs a {
+  color: var(--graphite);
+  text-decoration: none;
+  padding: 8px 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--checkpoint); font-weight: 500; }
+
+.lede { font-size: 1.05rem; color: var(--graphite); max-width: 62ch; margin: -4px 0 22px; }
+.lede strong { color: var(--ink); font-weight: 500; }
+
+.hint {
+  font-size: 0.86rem;
+  color: var(--graphite);
+  background: var(--signal-wash);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+}
+kbd {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 4px;
+  background: var(--raised);
+}
 
 .shell { max-width: var(--shell); margin: 0 auto; padding: 28px 24px 96px; }
+.shell.is-wide { max-width: 1640px; }
 .reading { max-width: var(--reading); }
 
 .muted { color: var(--graphite); }
@@ -254,25 +286,85 @@ code, pre, .mono { font-family: var(--mono); font-size: 13.5px; line-height: 1.5
 .panel { border-top: 1px solid var(--rule); padding-top: 20px; margin-top: 28px; }
 .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 
-.diff { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13.5px; }
-.diff td { padding: 1px 8px; vertical-align: top; white-space: pre-wrap; word-break: break-word; }
+/* why: every row must be exactly one line tall. Wrapping made the left and right
+   columns drift out of step, so a change appeared next to the wrong line. Long
+   lines scroll horizontally instead. */
+.diff {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  tab-size: 4;
+}
+.diff td {
+  padding: 0 10px;
+  vertical-align: top;
+  white-space: pre;
+}
 .diff .no {
-  width: 1%;
+  /* The numbers were breaking mid-digit ("10" as "1" over "0"). */
+  white-space: nowrap;
+  min-width: 3ch;
+  width: 3ch;
   text-align: right;
   color: var(--graphite);
   user-select: none;
-  padding-right: 6px;
+  padding: 0 8px 0 10px;
   border-right: 1px solid var(--rule);
+  background: var(--paper);
+  position: sticky;
+  left: 0;
 }
+.diff td.l, .diff td.r { padding-right: 24px; }
 .diff tr.add td.r, .diff tr.change td.r { background: var(--gain-wash); }
 .diff tr.remove td.l, .diff tr.change td.l { background: var(--loss-wash); }
-.diff tr.skip td { color: var(--graphite); background: var(--paper); font-style: italic; padding: 5px 8px; }
-.diff-scroll { overflow-x: auto; }
+.diff tr.add td.l, .diff tr.remove td.r { background: var(--rule); opacity: 0.25; }
+.diff tr.skip td {
+  color: var(--graphite);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.diff-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--raised);
+}
+.diff-gutter { border-left: 1px solid var(--rule); }
 
-.unified { font-family: var(--mono); font-size: 13.5px; white-space: pre-wrap; }
-.unified .add { background: var(--gain-wash); display: block; }
-.unified .remove { background: var(--loss-wash); display: block; }
-.unified .hunk, .unified .meta { color: var(--graphite); display: block; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button {
+  font: inherit;
+  font-size: 0.82rem;
+  background: none;
+  border: 0;
+  color: var(--graphite);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--signal-wash); color: var(--ink); font-weight: 500; }
+
+.unified {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--raised);
+  padding: 8px 0;
+  margin: 0;
+}
+.unified span { display: block; padding: 0 12px; }
+.unified .add { background: var(--gain-wash); }
+.unified .remove { background: var(--loss-wash); }
+.unified .hunk { color: var(--graphite); background: var(--signal-wash); margin: 4px 0; }
+.unified .meta { color: var(--graphite); }
 
 .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .two-up > * { min-width: 0; }
@@ -329,19 +421,31 @@ summary:hover { color: var(--ink); }
 
 /* ---------- story ---------- */
 
-.story { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 32px; }
+.story { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; }
 .rail { position: sticky; top: 76px; align-self: start; font-size: 0.82rem; }
 .rail ol { list-style: none; margin: 0; padding: 0; }
-.rail li { padding: 3px 0; }
+.rail li { padding: 5px 0; line-height: 1.4; }
 .rail a { color: var(--graphite); text-decoration: none; display: block; }
 .rail a:hover { color: var(--ink); }
 .rail a.is-current { color: var(--ink); font-weight: 600; }
 
 .chapter { border-top: 1px solid var(--rule); padding-top: 28px; margin-top: 44px; scroll-margin-top: 84px; }
 .chapter:first-of-type { border-top: 0; margin-top: 0; }
-.chapter-note { color: var(--checkpoint); font-size: 1.05rem; margin-bottom: 6px; }
+.chapter-note { color: var(--checkpoint); font-size: 1.1rem; margin-bottom: 6px; font-weight: 500; }
+.chapter-index {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--graphite);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
 .chapter-body { max-width: var(--reading); }
 .chapter-wide { max-width: 1080px; }
+
+/* why: a class that sets `display` overrides the [hidden] attribute, so the
+   "new runs synced" banner showed on every page load. */
+[hidden] { display: none !important; }
 
 .banner {
   border: 1px solid var(--checkpoint);
@@ -369,3 +473,15 @@ summary:hover { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Prose from an analysis: inline code should look like code. */
+.analysis code, .chapter code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--signal-wash);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.analysis pre code { background: none; padding: 0; }
+.analysis p, .chapter p { max-width: 74ch; }
+.analysis li { margin-bottom: 4px; max-width: 74ch; }

@@ -1,11 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% block title %}{{ cell.name }} — {{ project }} — Trail{% endblock %}
-{% block nav %}
-  <a href="/p/{{ project }}">Cells</a>
-  <a href="/p/{{ project }}/story">Story</a>
-  <a href="/p/{{ project }}/concepts">Concepts</a>
-{% endblock %}
+{% block crumb %}<span class="sep">/</span><span class="here">{{ cell.name }}</span>{% endblock %}
 {% block content %}
 
 <div class="panel-head" style="border:0; padding:0; margin-bottom: 18px;">
@@ -23,7 +19,7 @@
 
 <div class="cell-layout">
   <div>
-    <h2 class="small muted">Versions</h2>
+    <h2 class="small muted">Versions of this cell</h2>
     <div class="spine">
       {% for knot in spine %}
       <button class="knot {{ 'is-marked' if knot.marked }} {{ 'is-minor' if knot.minor and not knot.marked }}
@@ -36,11 +32,13 @@
           {% if knot.n == b %}<span class="knot-pill">B</span>{% endif %}
           {% if knot.metric.name and knot.metric.final is not none %}
             <span class="knot-metric">{{ "%.4g"|format(knot.metric.final) }}</span>
-            {% if knot.delta is not none %}
-              <span class="knot-metric {{ 'delta-flat' if knot.within_noise else ('delta-down' if knot.delta < 0 else ('delta-up' if knot.delta > 0 else 'delta-flat')) }}">
-                {%- if knot.within_noise %}≈{% elif knot.delta < 0 %}↓{% elif knot.delta > 0 %}↑{% else %}={% endif -%}
+            {% if knot.delta is not none and knot.delta != 0 %}
+              <span class="knot-metric {{ 'delta-flat' if knot.within_noise else ('delta-down' if knot.delta < 0 else 'delta-up') }}">
+                {%- if knot.within_noise %}≈{% elif knot.delta < 0 %}↓{% else %}↑{% endif -%}
                 {{ "%.3g"|format(knot.delta | abs) }}
               </span>
+            {% elif knot.delta is not none %}
+              <span class="knot-metric delta-flat">same</span>
             {% endif %}
           {% endif %}
         </span>
@@ -56,15 +54,18 @@
       </button>
       {% endfor %}
     </div>
-    <p class="muted small">Click a version to compare it against the one shown as B.</p>
+    <p class="hint">
+      <strong>A</strong> and <strong>B</strong> are the two versions being compared on the right.
+      Click any version to make it <strong>B</strong>; the old B becomes A.
+    </p>
   </div>
 
   <div>
     <div class="chips">
       <span class="chip">v{{ a }} → v{{ b }}</span>
       {{ m.metric_chip(right_metrics, left_metrics, right.loss_std) }}
-      {% if left_out.duration and right_out.duration %}
-        <span class="chip">time {{ "%.2f"|format(left_out.duration) }}s → {{ "%.2f"|format(right_out.duration) }}s</span>
+      {% if (left_out.duration or 0) > 0.05 or (right_out.duration or 0) > 0.05 %}
+        <span class="chip">time {{ "%.2f"|format(left_out.duration or 0) }}s → {{ "%.2f"|format(right_out.duration or 0) }}s</span>
       {% endif %}
       {% if right.loss_std %}<span class="chip is-warn">noise ±{{ "%.3g"|format(right.loss_std) }}</span>{% endif %}
       {% if right.attempts %}<span class="chip is-warn">{{ right.attempts | length }} failed attempt{{ "" if right.attempts|length == 1 else "s" }}</span>{% endif %}
@@ -72,13 +73,14 @@
 
     <div class="panel" style="border-top:0; padding-top:0; margin-top:0">
       <div class="panel-head">
-        <h2>What changed</h2>
-        <details><summary>Unified</summary>
-          <div class="unified">{% for kind, line in unified %}<span class="{{ kind }}">{{ line | safe }}</span>
-{% endfor %}</div>
-        </details>
+        <h2>What changed between v{{ a }} and v{{ b }}</h2>
+        <div class="seg" role="group" aria-label="Diff layout">
+          <button type="button" data-diff-view="split" aria-pressed="true">Side by side</button>
+          <button type="button" data-diff-view="unified" aria-pressed="false">One column</button>
+        </div>
       </div>
-      {{ m.diff_table(rows) }}
+      <div data-diff-pane="split">{{ m.diff_table(rows) }}</div>
+      <pre class="unified" data-diff-pane="unified" hidden>{% for kind, line in unified %}<span class="{{ kind }}">{{ line | safe }}</span>{% endfor %}</pre>
     </div>
 
     {% if right.attempts %}
@@ -93,7 +95,7 @@
     {% endif %}
 
     <div class="panel">
-      <div class="panel-head"><h2>Outputs</h2></div>
+      <div class="panel-head"><h2>What each version printed</h2></div>
       <div class="two-up">
         <div>{{ m.outputs(left_out, "v" ~ a) }}</div>
         <div>{{ m.outputs(right_out, "v" ~ b) }}</div>

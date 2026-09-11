@@ -148,10 +148,44 @@ def sparkline(values: list[float], width: int = 120, height: int = 24) -> str:
     )
 
 
+#: Light and dark token themes. Two problems with Pygments' stylesheet, both of
+#: which showed up as a white slab inside a dark page: it sets a background colour
+#: on the container, and it emits unscoped rules (`pre`, `td.linenos`) that would
+#: leak into the rest of the viewer. We keep only the `.hl`-scoped token colours.
+LIGHT_STYLE = "default"
+DARK_STYLE = "github-dark"
+
+
+def _tokens(style: str) -> list[str]:
+    """Token-colour rules only, as a list of single-selector CSS rules."""
+    rules: list[str] = []
+    for rule in HtmlFormatter(style=style).get_style_defs(".hl").split("\n"):
+        rule = rule.strip()
+        # `.hl { background: ... }` is the slab; anything not starting `.hl ` is unscoped.
+        if not rule.startswith(".hl ") or rule.startswith(".hl {"):
+            continue
+        rules.append(rule)
+    return rules
+
+
+def _scoped(prefix: str, rules: list[str]) -> str:
+    return "\n".join(f"{prefix} {rule}" for rule in rules)
+
+
 def pygments_css() -> str:
+    """Token colours for both themes, guarded exactly like the rest of the palette."""
     if highlight is None:
         return ""
-    return HtmlFormatter().get_style_defs(".hl")
+    light, dark = _tokens(LIGHT_STYLE), _tokens(DARK_STYLE)
+    return "\n".join(
+        [
+            "\n".join(light),
+            "@media (prefers-color-scheme: dark) {",
+            _scoped(':root:not([data-theme="light"])', dark),
+            "}",
+            _scoped(':root[data-theme="dark"]', dark),
+        ]
+    )
 
 
 def escape(value: Any) -> str:

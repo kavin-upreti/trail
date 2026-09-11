@@ -1,10 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Questions — {{ project }} — Trail{% endblock %}
-{% block nav %}
-  <a href="/p/{{ project }}">Cells</a>
-  <a href="/p/{{ project }}/story">Story</a>
-  <a href="/p/{{ project }}/concepts">Concepts</a>
-{% endblock %}
 {% block content %}
 <h1>Questions you've asked</h1>
 {% if answers %}
