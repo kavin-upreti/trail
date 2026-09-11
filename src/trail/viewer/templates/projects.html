@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Trail{% endblock %}
+{% block content %}
+<h1>Your recordings</h1>
+<p class="muted reading">Every cell you ran, grouped into the versions that matter.</p>
+
+{% if projects %}
+<div class="rows">
+  {% for p in projects %}
+  <a class="row" href="/p/{{ p.name }}">
+    <div class="row-main">
+      <div class="row-title">{{ p.name }}</div>
+      <div class="row-meta">
+        {{ p.cells }} cell{{ "" if p.cells == 1 else "s" }} ·
+        {{ p.versions }} version{{ "" if p.versions == 1 else "s" }} ·
+        {{ p.runs }} run{{ "" if p.runs == 1 else "s" }}
+      </div>
+    </div>
+    <div class="row-meta">
+      {% if p.steps %}
+        {{ p.explained }}/{{ p.steps }} checkpoints explained
+      {% else %}
+        no checkpoints yet
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty reading">
+  <p>Nothing recorded yet.</p>
+  <p>In a notebook cell, run <code>import trail</code> then <code>trail.start("my-project")</code>,
+     and code along as usual. Trail saves every run in the background.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ project }} — Trail{% endblock %}
+{% block nav %}
+  <a href="/p/{{ project }}" aria-current="page">Cells</a>
+  <a href="/p/{{ project }}/story">Story</a>
+  <a href="/p/{{ project }}/concepts">Concepts</a>
+{% endblock %}
+{% block content %}
+<h1>{{ project }}</h1>
+<p class="muted">
+  {{ result.runs | length }} runs across {{ sessions | length }} session{{ "" if sessions|length == 1 else "s" }}.
+</p>
+
+{% set unexplained = [] %}
+{% for s in steps %}{% if result.analysis_state.get(s.key) != "fresh" %}{% set _ = unexplained.append(s) %}{% endif %}{% endfor %}
+
+{% if steps %}
+<p>
+  {% if unexplained %}
+    <button class="button" type="button" data-analyze="all" data-project="{{ project }}"
+            data-count="{{ unexplained | length }}">
+      Explain {{ unexplained | length }} checkpoint{{ "" if unexplained|length == 1 else "s" }}
+    </button>
+    <span class="job-log" data-job-log></span>
+  {% else %}
+    <a class="button is-quiet" href="/p/{{ project }}/story">Read the story</a>
+  {% endif %}
+</p>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Cells</h2></div>
+  <div class="rows">
+    {% for cell in cells if not cell.hidden %}
+    <a class="row" href="/p/{{ project }}/cell/{{ cell.key }}">
+      <div class="row-main">
+        <div class="row-title">{{ cell.name }}</div>
+        <div class="row-meta">
+          {{ cell.versions }} version{{ "" if cell.versions == 1 else "s" }}
+          {%- if cell.checkpoints %} · {{ cell.checkpoints }} checkpoint{{ "" if cell.checkpoints == 1 else "s" }}{% endif %}
+        </div>
+      </div>
+      {% if cell.sparkline %}<div>{{ cell.sparkline | safe }}</div>{% endif %}
+      {% if cell.metric.name and cell.metric.final is not none %}
+        <div class="row-meta mono">{{ cell.metric.name }} {{ "%.4g"|format(cell.metric.final) }}</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% set setup = cells | selectattr("hidden") | list %}
+  {% if setup %}
+  <details>
+    <summary>{{ setup | length }} setup cell{{ "" if setup|length == 1 else "s" }}</summary>
+    <div class="rows">
+      {% for cell in setup %}
+      <a class="row" href="/p/{{ project }}/cell/{{ cell.key }}">
+        <div class="row-main"><div class="row-title">{{ cell.name }}</div></div>
+        <div class="row-meta">{{ cell.versions }} version{{ "" if cell.versions == 1 else "s" }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Sessions</h2></div>
+  <div class="rows">
+    {% for session in sessions %}
+    <div class="row">
+      <div class="row-main">
+        <div class="mono small">{{ session.start[:19] | replace("T", " ") }}</div>
+        <div class="row-meta">
+          {{ session.frontend or "unknown frontend" }}
+          {%- if session.notebook %} · {{ session.notebook }}{% endif %}
+        </div>
+      </div>
+      <div class="row-meta">{{ "ended cleanly" if session.clean else "ended by a restart or crash" }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if result.warnings %}
+<div class="panel">
+  <div class="panel-head"><h2>Worth knowing</h2></div>
+  <ul class="muted">{% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% endblock %}

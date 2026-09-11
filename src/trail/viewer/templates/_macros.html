@@ -1,0 +1,130 @@
+{% macro metric_chip(metrics, other=None, loss_std=None) %}
+  {%- if metrics.name and metrics.final is not none -%}
+    {%- set delta = (metrics.final - other.final) if (other and other.name == metrics.name and other.final is not none) else none -%}
+    {%- set noisy = loss_std and delta is not none and (delta | abs) <= loss_std -%}
+    <span class="chip {% if delta is not none and not noisy %}{{ 'is-gain' if delta < 0 else ('is-loss' if delta > 0 else '') }}{% endif %}">
+      {{ metrics.name }}
+      {%- if other and other.final is not none %} <strong>{{ "%.4g"|format(other.final) }} → {{ "%.4g"|format(metrics.final) }}</strong>
+      {%- else %} <strong>{{ "%.4g"|format(metrics.final) }}</strong>{% endif %}
+      {%- if delta is not none %}
+        {%- if noisy %} (within noise){% elif delta < 0 %} ↓{{ "%.4g"|format(-delta) }}{% elif delta > 0 %} ↑{{ "%.4g"|format(delta) }}{% else %} unchanged{% endif %}
+      {%- endif %}
+    </span>
+  {%- endif -%}
+{% endmacro %}
+
+{% macro diff_table(rows) %}
+<div class="diff-scroll">
+  <table class="diff">
+    <tbody>
+    {% for row in rows %}
+      {% if row.kind == "skip" %}
+        <tr class="skip"><td class="no"></td><td colspan="3">{{ row.left }}</td></tr>
+      {% else %}
+        <tr class="{{ row.kind }}">
+          <td class="no">{{ row.left_no }}</td>
+          <td class="l hl">{{ row.left | safe }}</td>
+          <td class="no">{{ row.right_no }}</td>
+          <td class="r hl">{{ row.right | safe }}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro outputs(out, label) %}
+  <h3>{{ label }}</h3>
+  {% if out.error %}
+    <p class="small" style="color: var(--loss)">{{ out.error.type }}: {{ out.error.message }}</p>
+  {% endif %}
+  {% if out.stdout %}
+    <pre class="stdout">{{ out.stdout }}</pre>
+  {% else %}
+    <p class="muted small">No printed output.</p>
+  {% endif %}
+  {% if out.result %}<p class="mono small">Result: {{ out.result }}</p>{% endif %}
+  {% for src in out.images %}
+    <img class="plot" src="{{ src }}" alt="Recorded plot from this run" loading="lazy">
+  {% endfor %}
+  {% for html in out.html %}
+    {# Recorded HTML is never trusted: sandboxed, no scripts, no same-origin (hard rule 7). #}
+    <iframe class="embedded" sandbox="" srcdoc="{{ html }}" title="Recorded HTML output"></iframe>
+  {% endfor %}
+{% endmacro %}
+
+{% macro analysis_card(analysis) %}
+<div class="analysis">
+  <h2>{{ analysis.title }}</h2>
+  <p class="effect">
+    {{ analysis.effect.metric or "no measured metric" }}
+    {%- if analysis.effect.before is not none and analysis.effect.after is not none %}
+      {{ "%.4g"|format(analysis.effect.before) }} → {{ "%.4g"|format(analysis.effect.after) }}
+    {%- endif %}
+    · {{ analysis.effect.direction }} · {{ analysis.effect.confidence }} confidence
+  </p>
+  {% if analysis.effect.noise_note %}<p class="muted small">{{ analysis.effect.noise_note }}</p>{% endif %}
+  <p>{{ analysis.summary }}</p>
+
+  {% if analysis.changes %}
+    <h3>What changed</h3>
+    <ul>{% for change in analysis.changes %}
+      <li><strong>{{ change.what }}</strong>{% if change.detail %} — {{ change.detail }}{% endif %}</li>
+    {% endfor %}</ul>
+  {% endif %}
+
+  {% if analysis.why %}
+    <h3>Why it helps</h3>
+    {% for para in analysis.why.split("\n\n") %}<p>{{ para }}</p>{% endfor %}
+  {% endif %}
+
+  {% if analysis.context_warnings %}
+    <div class="caution">
+      <strong>Careful</strong> — other things changed at the same time:
+      <ul>{% for warning in analysis.context_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  {% if analysis.tradeoffs %}
+    <h3>Tradeoffs</h3>
+    <ul>{% for item in analysis.tradeoffs %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if analysis.plot_observations %}
+    <h3>What the plots show</h3><p>{{ analysis.plot_observations }}</p>
+  {% endif %}
+
+  {% if analysis.concepts or analysis.other_concepts %}
+    <h3>Concepts</h3>
+    {% for concept in analysis.concepts %}
+      {% set c = concept | concept_lookup %}
+      {% if c %}
+      <div class="concept">
+        <strong>{{ c.name }}</strong>
+        <div class="small muted">{{ c.summary }}</div>
+        {% for ref in c.refs %}<div class="small"><a href="{{ ref.url }}" rel="noreferrer">{{ ref.title }}</a></div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    {% for other in analysis.other_concepts %}
+      <div class="concept">
+        <strong>{{ other.name }}</strong> <span class="unverified">(unverified — no link)</span>
+        {% if other.why_relevant %}<div class="small muted">{{ other.why_relevant }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if analysis.try_next %}
+    <h3>Try next</h3>
+    <ul>{% for item in analysis.try_next %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if analysis.self_check %}
+    <h3>Check yourself</h3>
+    {% for item in analysis.self_check %}
+      <details><summary>{{ item.question }}</summary><p>{{ item.answer }}</p></details>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}

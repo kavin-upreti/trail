@@ -632,6 +632,32 @@ else:
         }
         return analysis, meta
 
+    @app.command()
+    def serve(
+        port: int = typer.Option(None, "--port", help="Port to listen on"),
+        no_open: bool = typer.Option(False, "--no-open", help="Don't open a browser"),
+        logs: str = typer.Option(None, "--logs"),
+    ) -> None:
+        """Open the viewer in your browser."""
+        from trail.viewer.app import serve as run_server
+
+        root = _root(logs)
+        settings = config_mod.load().viewer
+        chosen = port or int(settings.get("port", 8765))
+        should_open = not no_open and bool(settings.get("open_browser", True))
+
+        console.print(f"Trail is reading {root}")
+        console.print(f"  http://127.0.0.1:{chosen}   (press Ctrl+C to stop)")
+        try:
+            run_server(root, chosen, should_open)
+        except KeyboardInterrupt:
+            console.print("\nStopped.")
+        except OSError as exc:
+            _fail(
+                f"Couldn't start the viewer on port {chosen}: {exc}",
+                "Something else may be using it — try `trail serve --port 8766`.",
+            )
+
     cells_app = typer.Typer(help="Fix how cells were identified.")
     app.add_typer(cells_app, name="cells")
 

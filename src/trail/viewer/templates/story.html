@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Story — {{ project }} — Trail{% endblock %}
+{% block nav %}
+  <a href="/p/{{ project }}">Cells</a>
+  <a href="/p/{{ project }}/story" aria-current="page">Story</a>
+  <a href="/p/{{ project }}/concepts">Concepts</a>
+{% endblock %}
+{% block content %}
+<h1>{{ project }}, start to finish</h1>
+<p class="muted reading">
+  Every checkpoint you marked, in the order it happened. Press <kbd>j</kbd> and <kbd>k</kbd> to move
+  between steps, <kbd>e</kbd> to open a diff.
+</p>
+
+{% if not sections %}
+<div class="empty reading">
+  <p>No checkpoints yet, so there's no story to tell.</p>
+  <p>Put <code># trail: cp what you just figured out</code> in a cell and run it. Trail records the
+     moment, and Claude can explain it later.</p>
+</div>
+{% else %}
+<div class="story">
+  <nav class="rail" aria-label="Steps">
+    <ol>
+      {% for section in sections %}
+      <li><a href="#step-{{ loop.index }}" class="{{ 'is-current' if loop.first }}">{{ section.cell.name }}</a></li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  <div>
+    {% for section in sections %}
+    <section class="chapter" id="step-{{ loop.index }}">
+      <div class="chapter-body">
+        <p class="muted small mono">{{ section.cell.name }} · v{{ section.step.start_n }}{% if not section.first %} → v{{ section.step.end_n }}{% endif %}</p>
+        {% if section.step.note %}<p class="chapter-note">{{ section.step.note }}</p>{% endif %}
+
+        {% if section.analysis %}
+          {{ m.analysis_card(section.analysis) }}
+        {% else %}
+          <h2>{{ "Where this cell started" if section.first else "Not explained yet" }}</h2>
+          <div class="chips">
+            {{ m.metric_chip(section.right_metrics, section.left_metrics if not section.first else none, section.right.loss_std) }}
+          </div>
+          <p>
+            <button class="button" type="button" data-analyze="{{ section.step.key }}" data-project="{{ project }}">Explain this step</button>
+            <span class="job-log" data-job-log></span>
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="chapter-wide">
+        {% if not section.first %}
+        <details>
+          <summary>The change</summary>
+          {{ m.diff_table(section.rows) }}
+        </details>
+        {% else %}
+        <details>
+          <summary>The code</summary>
+          {{ m.diff_table(section.rows) }}
+        </details>
+        {% endif %}
+
+        {% if section.left_out.images or section.right_out.images %}
+        <div class="two-up" style="margin-top:16px">
+          <div>
+            <h3 class="small muted">Before</h3>
+            {% for src in section.left_out.images %}<img class="plot" src="{{ src }}" alt="Plot before the change" loading="lazy">{% endfor %}
+          </div>
+          <div>
+            <h3 class="small muted">After</h3>
+            {% for src in section.right_out.images %}<img class="plot" src="{{ src }}" alt="Plot after the change" loading="lazy">{% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <p><a class="small" href="/p/{{ project }}/cell/{{ section.cell.key }}?a={{ section.step.start_n }}&b={{ section.step.end_n }}">Open this cell →</a></p>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

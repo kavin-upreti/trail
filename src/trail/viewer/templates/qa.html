@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Questions — {{ project }} — Trail{% endblock %}
+{% block nav %}
+  <a href="/p/{{ project }}">Cells</a>
+  <a href="/p/{{ project }}/story">Story</a>
+  <a href="/p/{{ project }}/concepts">Concepts</a>
+{% endblock %}
+{% block content %}
+<h1>Questions you've asked</h1>
+{% if answers %}
+  {% for answer in answers %}
+  <div class="panel reading">
+    <h2 class="mono small">{{ answer.name }}</h2>
+    <pre class="stdout">{{ answer.text }}</pre>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty reading">
+  <p>No questions saved yet.</p>
+  <p><code>trail ask {{ project }} "why did scaling W1 help?"</code> — coming in the next milestone.</p>
+</div>
+{% endif %}
+{% endblock %}

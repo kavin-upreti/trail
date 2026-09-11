@@ -5,10 +5,9 @@ the plots, the errors, every run — then groups those runs into meaningful vers
 uses Claude Code to explain each optimisation you made. A local web viewer replays the
 whole lecture as a sequence of changes, so you can revise from what you really did.
 
-**Status: in development.** Capture works (M1) — recording a notebook produces
-complete logs. The engine, analysis and viewer are still to come, so `trail log`,
-`trail analyze` and `trail serve` don't exist yet. See `docs/SPEC.md` for the full
-design and `docs/STATE.md` for where things stand.
+**Status: usable.** Recording, the engine, explanations and the viewer all work.
+Still to come: `trail ask`, `trail init`/`doctor`, and polish. See `docs/SPEC.md` for
+the design and `docs/STATE.md` for where things stand.
 
 Try it now with `examples/demo_evolution.ipynb`.
 
@@ -67,11 +66,34 @@ Last cell: `trail.stop()`.
 ## Then, on the Mac
 
 ```bash
-trail log makemore-3        # check the grouping looks right
-trail analyze makemore-3    # explain the checkpoints
-trail serve                 # open the viewer
-trail ask makemore-3 "why did scaling W1 help the tanh layer?"
+trail log makemore-3        # the history as a timeline, in the terminal
+trail analyze makemore-3    # explain the checkpoints with Claude
+trail serve                 # open the viewer at http://127.0.0.1:8765
 ```
+
+`trail log` prints a version spine per cell — `●` a version, `◆` a checkpoint with
+your note, failed runs folded in as attempts, and the change in loss between versions:
+
+```
+train  [tag:train]
+  ◆ v1  loss 0.2602   4 runs · 1 failed attempt (AttributeError) · was 3.896e+47 on the first run
+      ↳ loss explodes to inf, lr is way too high
+  ◆ v2  loss 0.2602  unchanged   2 runs
+      ↳ clip the gradient so a big lr can't blow up
+```
+
+`trail serve` is the same history in a browser, offline and bound to localhost only:
+a cell page with the version spine, side-by-side diffs, the output each version
+printed and the plots next to each other; and **story mode**, the whole lecture as one
+column, `j`/`k` between steps.
+
+`trail analyze` sends a checkpoint to Claude and saves an explanation: what changed,
+why it helps, the measured effect *with its uncertainty*, links to real papers, and
+questions to test yourself. It will tell you when a result is inside the noise, or when
+another cell changed at the same time and the comparison isn't clean.
+
+Other commands: `trail show CELL 1 2` for a terminal diff, `trail projects`,
+`trail rebuild`, and `trail cells rename/merge/hide/unhide` when a cell is misidentified.
 
 ## What Trail can't see
 

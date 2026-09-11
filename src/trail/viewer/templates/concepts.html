@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Concepts{% if project %} — {{ project }}{% endif %} — Trail{% endblock %}
+{% block nav %}
+  {% if project %}
+  <a href="/p/{{ project }}">Cells</a>
+  <a href="/p/{{ project }}/story">Story</a>
+  <a href="/p/{{ project }}/concepts" aria-current="page">Concepts</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<h1>{% if project %}What {{ project }} taught you{% else %}Concept index{% endif %}</h1>
+<p class="muted reading">
+  {% if project %}Ideas that came up in this project's explanations, and where you met them.
+  {% else %}Every concept Trail can cite, with real references. Nothing else is ever linked.{% endif %}
+</p>
+
+{% if entries %}
+<div class="rows">
+  {% for entry in entries %}
+  <div class="row">
+    <div class="row-main">
+      <div class="row-title">{{ entry.concept.name }}</div>
+      <div class="row-meta">{{ entry.concept.summary }}</div>
+      {% for ref in entry.concept.refs %}
+        <div class="small"><a href="{{ ref.url }}" rel="noreferrer">{{ ref.title }}</a></div>
+      {% endfor %}
+      {% if entry.uses %}
+        <div class="small" style="margin-top:6px">
+          {% for use in entry.uses %}
+            <a href="/p/{{ use.project }}/cell/{{ use.identity }}?a={{ use.a }}&b={{ use.b }}">{{ use.cell }}</a>{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    <div class="row-meta">{{ entry.concept.category }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty reading">
+  <p>No concepts yet — they appear once a checkpoint has been explained.</p>
+</div>
+{% endif %}
+{% endblock %}

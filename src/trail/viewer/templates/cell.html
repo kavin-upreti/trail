@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ cell.name }} — {{ project }} — Trail{% endblock %}
+{% block nav %}
+  <a href="/p/{{ project }}">Cells</a>
+  <a href="/p/{{ project }}/story">Story</a>
+  <a href="/p/{{ project }}/concepts">Concepts</a>
+{% endblock %}
+{% block content %}
+
+<div class="panel-head" style="border:0; padding:0; margin-bottom: 18px;">
+  <div>
+    <h1 style="margin-bottom:2px">{{ cell.name }}</h1>
+    <p class="muted small mono" style="margin:0">{{ cell.key }}</p>
+  </div>
+  <div>
+    <button class="button is-quiet" type="button" data-cell-action="rename"
+            data-project="{{ project }}" data-identity="{{ cell.key }}" data-name="{{ cell.name }}">Rename</button>
+    <button class="button is-quiet" type="button" data-cell-action="{{ "unhide" if cell.hidden else "hide" }}"
+            data-project="{{ project }}" data-identity="{{ cell.key }}">{{ "Unhide" if cell.hidden else "Hide" }}</button>
+  </div>
+</div>
+
+<div class="cell-layout">
+  <div>
+    <h2 class="small muted">Versions</h2>
+    <div class="spine">
+      {% for knot in spine %}
+      <button class="knot {{ 'is-marked' if knot.marked }} {{ 'is-minor' if knot.minor and not knot.marked }}
+                     {{ 'is-a' if knot.n == a }} {{ 'is-b' if knot.n == b }}"
+              type="button" data-version="{{ knot.n }}"
+              aria-label="Version {{ knot.n }}{% if knot.note %}: {{ knot.note }}{% endif %}">
+        <span class="knot-head">
+          <span class="knot-n">v{{ knot.n }}</span>
+          {% if knot.n == a %}<span class="knot-pill">A</span>{% endif %}
+          {% if knot.n == b %}<span class="knot-pill">B</span>{% endif %}
+          {% if knot.metric.name and knot.metric.final is not none %}
+            <span class="knot-metric">{{ "%.4g"|format(knot.metric.final) }}</span>
+            {% if knot.delta is not none %}
+              <span class="knot-metric {{ 'delta-flat' if knot.within_noise else ('delta-down' if knot.delta < 0 else ('delta-up' if knot.delta > 0 else 'delta-flat')) }}">
+                {%- if knot.within_noise %}≈{% elif knot.delta < 0 %}↓{% elif knot.delta > 0 %}↑{% else %}={% endif -%}
+                {{ "%.3g"|format(knot.delta | abs) }}
+              </span>
+            {% endif %}
+          {% endif %}
+        </span>
+        {% if knot.note %}<div class="knot-note">{{ knot.note }}</div>{% endif %}
+        {% if knot.title %}<div class="knot-title">{{ knot.title }}</div>{% endif %}
+        {% if knot.attempts or knot.runs > 1 or knot.spread %}
+        <div class="knot-extra">
+          {%- if knot.runs > 1 %}{{ knot.runs }} runs{% endif -%}
+          {%- if knot.attempts %}{% if knot.runs > 1 %} · {% endif %}{{ knot.attempts }} failed{% endif -%}
+          {%- if knot.spread %} · ranged {{ "%.3g"|format(knot.spread[0]) }}–{{ "%.3g"|format(knot.spread[1]) }}{% endif -%}
+        </div>
+        {% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    <p class="muted small">Click a version to compare it against the one shown as B.</p>
+  </div>
+
+  <div>
+    <div class="chips">
+      <span class="chip">v{{ a }} → v{{ b }}</span>
+      {{ m.metric_chip(right_metrics, left_metrics, right.loss_std) }}
+      {% if left_out.duration and right_out.duration %}
+        <span class="chip">time {{ "%.2f"|format(left_out.duration) }}s → {{ "%.2f"|format(right_out.duration) }}s</span>
+      {% endif %}
+      {% if right.loss_std %}<span class="chip is-warn">noise ±{{ "%.3g"|format(right.loss_std) }}</span>{% endif %}
+      {% if right.attempts %}<span class="chip is-warn">{{ right.attempts | length }} failed attempt{{ "" if right.attempts|length == 1 else "s" }}</span>{% endif %}
+    </div>
+
+    <div class="panel" style="border-top:0; padding-top:0; margin-top:0">
+      <div class="panel-head">
+        <h2>What changed</h2>
+        <details><summary>Unified</summary>
+          <div class="unified">{% for kind, line in unified %}<span class="{{ kind }}">{{ line | safe }}</span>
+{% endfor %}</div>
+        </details>
+      </div>
+      {{ m.diff_table(rows) }}
+    </div>
+
+    {% if right.attempts %}
+    <div class="panel">
+      <details>
+        <summary>{{ right.attempts | length }} failed attempt{{ "" if right.attempts|length == 1 else "s" }} before this worked</summary>
+        <ul class="small">
+          {% for attempt in right.attempts %}<li class="mono">{{ attempt.error_type or "error" }}</li>{% endfor %}
+        </ul>
+      </details>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-head"><h2>Outputs</h2></div>
+      <div class="two-up">
+        <div>{{ m.outputs(left_out, "v" ~ a) }}</div>
+        <div>{{ m.outputs(right_out, "v" ~ b) }}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      {% if analysis %}
+        {{ m.analysis_card(analysis) }}
+        {% if analysis_meta %}
+        <p class="muted small mono">
+          {{ analysis_meta.model }}{% if analysis_meta.total_cost_usd %} · ${{ "%.3f"|format(analysis_meta.total_cost_usd) }}{% endif %}
+        </p>
+        {% endif %}
+      {% elif step %}
+        <div class="panel-head"><h2>Not explained yet</h2></div>
+        <p class="muted reading">
+          This is a checkpoint{% if step.note %} — you noted “{{ step.note }}”{% endif %}.
+          Claude can read the code, outputs and plots and explain what changed and why.
+        </p>
+        <p>
+          <button class="button" type="button" data-analyze="{{ step.key }}" data-project="{{ project }}">Explain this step</button>
+          <span class="job-log" data-job-log></span>
+        </p>
+      {% else %}
+        <p class="muted reading">
+          Only checkpoints get explained. Mark one by putting
+          <code>#&nbsp;trail:&nbsp;cp&nbsp;why&nbsp;this&nbsp;matters</code> in the cell and running it.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -38,14 +38,30 @@ Last updated: 2026-09-11 by Claude Code
   - CLI: `trail log`, `show`, `projects`, `rebuild`, `cells rename/merge/hide/unhide`,
     `version`. Plus `config.py` for `~/.config/trail/config.toml`.
 
+- **M5 — Analysis** (SPEC 11). `trail analyze` explains a checkpoint with Claude.
+  - `analysis/`: bundle, runner, validate, render, store, concepts, project CLAUDE.md.
+  - `data/concepts.yaml` — 41 concepts, 38 links, all verified by
+    `scripts/check_concept_links.py`.
+  - `tests/fake_claude/claude` covers every failure branch without spending usage.
+  - ADR 0005 records the verified CLI contract. Measured cost: **$0.41 per step**.
+- **M6 — Viewer** (SPEC 13). `trail serve` at http://127.0.0.1:8765, fully offline.
+  - Projects, project overview, cell page (version spine + side-by-side diff +
+    outputs + plots), story mode, concept index, saved Q&A page.
+  - `viewer/diffs.py` renders diffs and sparklines server-side; `jobs.py` runs
+    analyses on one background worker and the page polls for the result.
+  - Security tested directly: recorded `<script>` is escaped, every iframe is
+    sandboxed, the blob route rejects traversal, nothing loads from the network.
+
 ## In progress
-- Nothing. M0–M3 are closed and committed.
+- Nothing. M0–M3, M5 and M6 are closed and committed. **M4 was skipped for now**
+  (see Next) at the user's request to go straight for analysis and the viewer.
 
 ## Next
 1. **M4 — CLI basics**: `init` (find the Drive folder, write config), `doctor`,
-   `template`. This is what the user needs to get Colab logs onto the Mac —
-   Google Drive for desktop is not installed there yet.
-2. M5 — Analysis (`claude -p`), the first milestone that spends usage.
+   `template`. The user still has no Google Drive for desktop, so their Colab
+   `spike` logs are not on the Mac. This is what unblocks that.
+2. M7 — `trail ask` (SPEC 12). The viewer already has a Q&A page waiting for it.
+3. M8 — polish, `trail export`, `colab_template.ipynb`, tagged v0.1.0.
 
 ## Decisions and findings
 - ADR 0001 — raw append-only logs.
@@ -71,9 +87,25 @@ Last updated: 2026-09-11 by Claude Code
 - `trail log` additions beyond the spec, both because the spec-faithful output hid
   the lesson: collapsed minor versions show what changed (`lr = 1.5 → lr = 0.5`), and
   a version whose identical code produced very different numbers says so.
+- **Deviation from Appendix B:** the analysis prompt gains a `{{framing}}` slot. A
+  cell's first checkpoint has `start_n == end_n` and an empty diff, so asking "how did
+  it change from v1 to v1" wasted a call and invited an invented answer.
+- **Deviation from SPEC 13.5:** the viewer uses the system font stack rather than
+  bundling IBM Plex woff2 files. The spec allows this fallback; it keeps the viewer
+  offline with no binaries in the repo, and macOS already has a good UI face.
 
 ## Open questions
 - Answered: Colab does not populate `cell_id`.
+- Answered: `--model` accepts aliases (`opus`, `sonnet`, `fable`), so the config's
+  `model = "sonnet"` works to save usage (ADR 0005).
+- **Known gap:** a step's plots come only from the cell being analysed. In these
+  lectures the plot that visualises a training change usually lives in a *different*
+  cell, so the analysis often sees no image. Worth revisiting — including plots from
+  cells that ran immediately after would help.
+- Checkpoint notes live in comment lines, which normalisation strips, so changing
+  only the note does not create a new version. Several different notes on unchanged
+  code therefore collapse into one step. Rarely bites (code usually changes at a
+  checkpoint) but it surprised me once.
 - Should Trail print a one-time reminder when an untagged cell is edited on Colab?
   ADR 0004 resolves SPEC 21's default to **yes** — there is no automatic recovery
   there — but it isn't built yet. Belongs with M3, once the engine can tell.
